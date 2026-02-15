@@ -103,8 +103,7 @@ class OllamaGUI:
         # Immediately poll connectivity after widgets are created
         self.root.after(200, self._poll_connectivity)
         self._models_info = {'a_settings': {}, 'b_settings': {}}
-        self.root.after_idle(self._refresh_a_models)
-        self.root.after_idle(self._refresh_b_models)
+        # model refresh will be scheduled after UI widgets are initialized
 
 
     def _auto_select_first_model(self, agent):
@@ -119,15 +118,19 @@ class OllamaGUI:
                 self.b_model_list.selection_set(0)
                 self._show_model_details('b')
         # Restore model auto-refresh on URL change after widgets are created
-        self.a_url.bind('<FocusOut>', lambda e: self._fetch_models(self.a_url.get().strip(), self.a_model, self.a_refresh_btn, self.a_model_status, None))
-        self.b_url.bind('<FocusOut>', lambda e: self._fetch_models(self.b_url.get().strip(), self.b_model, self.b_refresh_btn, self.b_model_status, None))
 
-        ttk.Label(models_frame, text='A').grid(row=0, column=0, sticky='e')
-        self.a_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
-        self.a_status_dot.grid(row=0, column=1, padx=(6,8))
-        ttk.Label(models_frame, text='B').grid(row=1, column=0, sticky='e')
-        self.b_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
-        self.b_status_dot.grid(row=1, column=1, padx=(6,8))
+        # --- Theme Application ---
+    def _apply_theme(self, theme):
+        style = ttk.Style()
+        # Use default theme (vista/win10/clam)
+        try:
+            style.theme_use('vista')
+        except Exception:
+            try:
+                style.theme_use('xpnative')
+            except Exception:
+                style.theme_use('clam')
+        style.configure('.', background='SystemButtonFace', foreground='black')
         style.configure('TLabel', background='SystemButtonFace', foreground='black')
         style.configure('TFrame', background='SystemButtonFace')
         style.configure('TNotebook', background='SystemButtonFace')
@@ -159,6 +162,9 @@ class OllamaGUI:
         ttk.Label(agent_frame, text='Persona:').grid(row=1, column=0, sticky='w', padx=(0,6), pady=6)
         self.a_persona = ttk.Entry(agent_frame, width=36)
         self.a_persona.grid(row=1, column=1, sticky='w', pady=6)
+        ttk.Label(agent_frame, text='Name:').grid(row=1, column=6, sticky='w', padx=(12,6), pady=6)
+        self.a_name = ttk.Entry(agent_frame, width=12)
+        self.a_name.grid(row=1, column=7, sticky='w', pady=6)
         ttk.Label(agent_frame, text='Age:').grid(row=1, column=2, sticky='w', padx=(12,6), pady=6)
         self.a_age = ttk.Entry(agent_frame, width=12)
         self.a_age.grid(row=1, column=3, sticky='w', pady=6)
@@ -200,6 +206,9 @@ class OllamaGUI:
         ttk.Label(agent_frame, text='Persona:').grid(row=3, column=0, sticky='w', padx=(0,6), pady=6)
         self.b_persona = ttk.Entry(agent_frame, width=36)
         self.b_persona.grid(row=3, column=1, sticky='w', pady=6)
+        ttk.Label(agent_frame, text='Name:').grid(row=3, column=6, sticky='w', padx=(12,6), pady=6)
+        self.b_name = ttk.Entry(agent_frame, width=12)
+        self.b_name.grid(row=3, column=7, sticky='w', pady=6)
         ttk.Label(agent_frame, text='Age:').grid(row=3, column=2, sticky='w', padx=(12,6), pady=6)
         self.b_age = ttk.Entry(agent_frame, width=12)
         self.b_age.grid(row=3, column=3, sticky='w', pady=6)
@@ -237,21 +246,15 @@ class OllamaGUI:
         self.clear_btn = ttk.Button(controls_frame, text='Clear Chat', command=self._clear_chat)
         self.clear_btn.pack(side='left', padx=(6,0))
 
-        # Chat-tab model selectors and connection indicators (Agent A / Agent B)
+        # Chat-tab compact connection indicators (Agent A / Agent B)
         models_frame = ttk.Frame(controls_frame)
         models_frame.pack(side='right', padx=(6,0))
-        ttk.Label(models_frame, text='A Model:').grid(row=0, column=0, sticky='e')
-        self.a_model_selector = ttk.Combobox(models_frame, width=20, values=[])
-        self.a_model_selector.grid(row=0, column=1, padx=(4,8))
-        self.a_model_selector.bind('<<ComboboxSelected>>', lambda e: self._on_chat_selector_change('a'))
+        ttk.Label(models_frame, text='A').grid(row=0, column=0, sticky='e')
         self.a_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
-        self.a_status_dot.grid(row=0, column=2, padx=(0,8))
-        ttk.Label(models_frame, text='B Model:').grid(row=1, column=0, sticky='e')
-        self.b_model_selector = ttk.Combobox(models_frame, width=20, values=[])
-        self.b_model_selector.grid(row=1, column=1, padx=(4,8))
-        self.b_model_selector.bind('<<ComboboxSelected>>', lambda e: self._on_chat_selector_change('b'))
+        self.a_status_dot.grid(row=0, column=1, padx=(6,8))
+        ttk.Label(models_frame, text='B').grid(row=1, column=0, sticky='e')
         self.b_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
-        self.b_status_dot.grid(row=1, column=2, padx=(0,8))
+        self.b_status_dot.grid(row=1, column=1, padx=(6,8))
 
         # --- Status Bar with Turn Count ---
         self.status_var = tk.StringVar(value='Ready.')
@@ -392,6 +395,12 @@ class OllamaGUI:
 
         self._model_status_log = []
         self._init_settings_tab()
+        # Schedule model refreshes after settings tab is created
+        try:
+            self.root.after(100, self._refresh_a_models)
+            self.root.after(200, self._refresh_b_models)
+        except Exception:
+            pass
 
     def _init_settings_tab(self):
         # Clear and rebuild the Settings tab model management menu
@@ -944,13 +953,15 @@ class OllamaGUI:
                 else:
                     formatted = text
                 if kind == 'a':
+                    name = self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A'
                     self.chat_text.config(state='normal')
-                    self.chat_text.insert('end', 'Agent_A: ' + formatted + '\n\n')
+                    self.chat_text.insert('end', f"{name}: " + formatted + '\n\n')
                     self.chat_text.see('end')
                     self.chat_text.config(state='disabled')
                 elif kind == 'b':
+                    name = self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B'
                     self.chat_text.config(state='normal')
-                    self.chat_text.insert('end', 'Agent_B: ' + formatted + '\n\n')
+                    self.chat_text.insert('end', f"{name}: " + formatted + '\n\n')
                     self.chat_text.see('end')
                     self.chat_text.config(state='disabled')
                 elif kind == 'status':
@@ -1349,8 +1360,10 @@ class OllamaGUI:
             persona_a = build_persona(cfg.get('a_persona'), cfg.get('a_age'), cfg.get('a_quirk'))
             persona_b = build_persona(cfg.get('b_persona'), cfg.get('b_age'), cfg.get('b_quirk'))
 
-            sys_a = f"You are Agent_A. Discuss '{topic}' with Agent_B. {persona_a}".strip()
-            sys_b = f"You are Agent_B. Discuss '{topic}' with Agent_A. {persona_b}".strip()
+            name_a = (self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A')
+            name_b = (self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B')
+            sys_a = f"You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}".strip()
+            sys_b = f"You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}".strip()
 
             messages_a = [{'role': 'system', 'content': sys_a}]
             messages_b = [{'role': 'system', 'content': sys_b}]
@@ -1363,7 +1376,8 @@ class OllamaGUI:
             queue.put(('b', f"(initial) {initial_prompt}"))
             messages_b.append({'role': 'user', 'content': initial_prompt})
             try:
-                brain.add_to_brain('Agent_B', initial_prompt, 'user')
+                name_b = (self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B')
+                brain.add_to_brain(name_b, initial_prompt, 'user')
             except Exception:
                 pass
 
@@ -1418,7 +1432,8 @@ class OllamaGUI:
                 content_b = trunc(resp_b.get('content', ''), 'b')
                 queue.put(('b', content_b))
                 try:
-                    brain.add_to_brain('Agent_B', content_b, 'assistant')
+                    name_b = (self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B')
+                    brain.add_to_brain(name_b, content_b, 'assistant')
                 except Exception:
                     pass
                 if log_file:
@@ -1443,7 +1458,8 @@ class OllamaGUI:
                 content_a = trunc(resp_a.get('content', ''), 'a')
                 queue.put(('a', content_a))
                 try:
-                    brain.add_to_brain('Agent_A', content_a, 'assistant')
+                    name_a = (self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A')
+                    brain.add_to_brain(name_a, content_a, 'assistant')
                 except Exception:
                     pass
                 if log_file:
