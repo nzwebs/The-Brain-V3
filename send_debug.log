@@ -1,0 +1,15 @@
+[2026-02-15T16:18:58.090495] _on_send called; txt='what do you know'
+[2026-02-15T16:18:58.090822] thread_alive=False
+[2026-02-15T16:18:58.091079] action=start_with_greeting txt='what do you know'
+[2026-02-15T16:20:13.410178] _on_send called; txt='what do you know'
+[2026-02-15T16:20:13.410399] thread_alive=False
+[2026-02-15T16:20:13.410588] action=start_with_greeting txt='what do you know'
+[2026-02-15T16:21:07.741301] _on_send called; txt='what do you know?'
+[2026-02-15T16:21:07.741536] thread_alive=False
+[2026-02-15T16:21:07.741762] action=start_with_greeting txt='what do you know?'
+[2026-02-15T16:21:55.668220] _on_send called; txt='what do you think about outer space?'
+[2026-02-15T16:21:55.668439] thread_alive=True
+[2026-02-15T16:21:55.668906] action=injected txt='what do you think about outer space?'
+[2026-02-15T16:22:28.423860] _on_send called; txt='what do you think about outer space?'
+[2026-02-15T16:22:28.424117] thread_alive=False
+[2026-02-15T16:22:28.424292] action=start_with_greeting txt='what do you think about outer space?'
