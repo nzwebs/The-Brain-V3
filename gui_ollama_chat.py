@@ -175,6 +175,8 @@ class OllamaGUI:
         self.root = root
         root.title('Ollama Two-Agent Chat')
         self.queue = queue.Queue()
+        # recent urls stored in memory, persisted on save
+        self._recent_urls = {'a': [], 'b': []}
         # --- Notebook and Tabs ---
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill='both', expand=True)
@@ -233,7 +235,7 @@ class OllamaGUI:
 
         # Agent A controls
         ttk.Label(agent_frame, text='Agent A URL:').grid(row=0, column=0, sticky='w', padx=(0,6), pady=6)
-        self.a_url = ttk.Entry(agent_frame, width=36)
+        self.a_url = ttk.Combobox(agent_frame, width=36, values=[])
         self.a_url.grid(row=0, column=1, sticky='w', pady=6)
         # Persist URLs when user edits them (focus-out or Enter)
         try:
@@ -241,6 +243,8 @@ class OllamaGUI:
             self.a_url.bind('<Return>', lambda e: self.save_config())
         except Exception:
             pass
+        self.a_manage_btn = ttk.Button(agent_frame, text='Manage', width=6, command=lambda: self._manage_urls('a'))
+        self.a_manage_btn.grid(row=0, column=2, sticky='w', padx=(6,0), pady=6)
         ttk.Label(agent_frame, text='Model:').grid(row=0, column=2, sticky='w', padx=(12,6), pady=6)
         self.a_model = ttk.Combobox(agent_frame, width=24, values=[])
         self.a_model.grid(row=0, column=3, sticky='w', pady=6)
@@ -284,13 +288,15 @@ class OllamaGUI:
 
         # Agent B controls
         ttk.Label(agent_frame, text='Agent B URL:').grid(row=2, column=0, sticky='w', padx=(0,6), pady=6)
-        self.b_url = ttk.Entry(agent_frame, width=36)
+        self.b_url = ttk.Combobox(agent_frame, width=36, values=[])
         self.b_url.grid(row=2, column=1, sticky='w', pady=6)
         try:
             self.b_url.bind('<FocusOut>', lambda e: self.save_config())
             self.b_url.bind('<Return>', lambda e: self.save_config())
         except Exception:
             pass
+        self.b_manage_btn = ttk.Button(agent_frame, text='Manage', width=6, command=lambda: self._manage_urls('b'))
+        self.b_manage_btn.grid(row=2, column=2, sticky='w', padx=(6,0), pady=6)
         ttk.Label(agent_frame, text='Model:').grid(row=2, column=2, sticky='w', padx=(12,6), pady=6)
         self.b_model = ttk.Combobox(agent_frame, width=24, values=[])
         self.b_model.grid(row=2, column=3, sticky='w', pady=6)
@@ -713,6 +719,75 @@ class OllamaGUI:
         text = self.model_details_text.get('1.0', 'end').strip()
         self.root.clipboard_append(text)
 
+    def _add_recent_url(self, agent, url):
+        try:
+            if not url or not isinstance(url, str):
+                return
+            url = url.strip()
+            if not url:
+                return
+            lst = self._recent_urls.get(agent, []) or []
+            if url in lst:
+                lst.remove(url)
+            lst.insert(0, url)
+            lst = lst[:10]
+            self._recent_urls[agent] = lst
+            try:
+                if agent == 'a' and hasattr(self, 'a_url'):
+                    self.a_url['values'] = lst
+                if agent == 'b' and hasattr(self, 'b_url'):
+                    self.b_url['values'] = lst
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _manage_urls(self, agent):
+        try:
+            top = tk.Toplevel(self.root)
+            top.title('Manage Recent URLs')
+            top.geometry('480x300')
+            lbl = ttk.Label(top, text=f'Recent URLs for Agent {agent.upper()}')
+            lbl.pack(anchor='w', padx=8, pady=(8,2))
+            lb = tk.Listbox(top)
+            lb.pack(fill='both', expand=True, padx=8, pady=4)
+            for u in (self._recent_urls.get(agent, []) or []):
+                lb.insert(tk.END, u)
+            btn_frame = ttk.Frame(top)
+            btn_frame.pack(fill='x', padx=8, pady=8)
+            def remove_selected():
+                try:
+                    sel = lb.curselection()
+                    if not sel:
+                        return
+                    idx = sel[0]
+                    val = lb.get(idx)
+                    lb.delete(idx)
+                    lst = list(lb.get(0, tk.END))
+                    self._recent_urls[agent] = lst
+                    try:
+                        if agent == 'a': self.a_url['values'] = lst
+                        else: self.b_url['values'] = lst
+                    except Exception:
+                        pass
+                    try:
+                        self.save_config()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+            def close():
+                try:
+                    top.destroy()
+                except Exception:
+                    pass
+            rem_btn = ttk.Button(btn_frame, text='Remove Selected', command=remove_selected)
+            rem_btn.pack(side='left')
+            close_btn = ttk.Button(btn_frame, text='Close', command=close)
+            close_btn.pack(side='right')
+        except Exception:
+            pass
+
     def _set_model_busy(self, msg):
         self.model_busy_var.set(msg)
         self.model_busy_label.update_idletasks()
@@ -939,6 +1014,18 @@ class OllamaGUI:
             },
         }
         try:
+            # update recent URL lists before saving
+            try:
+                aurl = cfg.get('a_url','').strip()
+                burl = cfg.get('b_url','').strip()
+                try: self._add_recent_url('a', aurl)
+                except Exception: pass
+                try: self._add_recent_url('b', burl)
+                except Exception: pass
+                cfg['recent_a_urls'] = list(self._recent_urls.get('a', []))
+                cfg['recent_b_urls'] = list(self._recent_urls.get('b', []))
+            except Exception:
+                pass
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(cfg, f, indent=2)
         except Exception:
@@ -1043,6 +1130,29 @@ class OllamaGUI:
                             except Exception: pass
                     except Exception:
                         pass
+            except Exception:
+                pass
+            # Load recent URLs if present
+            try:
+                ra = cfg.get('recent_a_urls', []) or []
+                rb = cfg.get('recent_b_urls', []) or []
+                self._recent_urls['a'] = [u for u in ra if isinstance(u, str) and u.strip()]
+                self._recent_urls['b'] = [u for u in rb if isinstance(u, str) and u.strip()]
+                try:
+                    if hasattr(self, 'a_url'):
+                        self.a_url['values'] = self._recent_urls['a']
+                        # set the combobox value to saved a_url if present
+                        try: self.a_url.set(cfg.get('a_url', self.a_url.get()))
+                        except Exception: pass
+                except Exception:
+                    pass
+                try:
+                    if hasattr(self, 'b_url'):
+                        self.b_url['values'] = self._recent_urls['b']
+                        try: self.b_url.set(cfg.get('b_url', self.b_url.get()))
+                        except Exception: pass
+                except Exception:
+                    pass
             except Exception:
                 pass
             # Pull model management config load removed
@@ -1947,10 +2057,16 @@ def main():
     app = OllamaGUI(root)
 
     try:
-        # Always start with the built-in defaults rather than loading previous config
-        app.reset_defaults()
+        # Load previous config if present; otherwise fall back to defaults
+        try:
+            app.load_config()
+        except Exception:
+            app.reset_defaults()
     except Exception:
-        pass
+        try:
+            app.reset_defaults()
+        except Exception:
+            pass
     # Ensure model lists auto-refresh after config is loaded and widgets are ready
     root.after(100, app._refresh_a_models)
     root.after(200, app._refresh_b_models)

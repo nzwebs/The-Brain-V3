@@ -147,6 +147,29 @@ python test_pull_server.py
 
 If you prefer to browse the test server, open `http://localhost:8000` in your browser — it exposes a tiny form that will POST to `/api/pull` and stream progress lines back to the page.
 
+How progress works
+- The GUI reads newline-delimited JSON from the pull endpoint and looks for numeric progress fields such as `percent`, `progress`, or calculated `downloaded`/`total`. When present the progress bar is updated in determinate mode; otherwise the GUI shows textual status updates.
+
+Cancel behavior
+- Click `Cancel Pull` to request cancellation. The GUI will stop updating the progress and mark the pull as cancelled; it does not forcibly terminate network connections on the server side — the server should support cooperative cancellation if needed.
+
+Developer notes
+- The GUI pull logic relies on the `requests` package and `stream=True` to iterate over `resp.iter_lines()`; ensure `requests` is present in `requirements.txt`.
+- The included `test_pull_server.py` simulates a streaming `/api/pull` endpoint and can be used for local testing without an Ollama server.
+
+Quick test steps
+1. Start the test server:
+
+```powershell
+python test_pull_server.py
+```
+2. In the GUI Settings tab set Agent A URL to `http://localhost:8000`.
+3. Enter a model name in the Agent A model box (e.g. `test-model`).
+4. Click `Pull → Agent A`. Observe the progress bar and status text. Click `Cancel Pull` to test cancellation.
+
+Contact / Issues
+- If the progress bar does not update, check that the server sends numeric `percent` fields or `downloaded/total` values in the streamed JSON. If you see only textual status, the GUI will display the text instead of a determinate progress value.
+
 **All settings are saved on exit and restored on next launch.**
 
 ### Launch the GUI
