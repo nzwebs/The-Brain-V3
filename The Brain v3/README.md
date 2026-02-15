@@ -145,3 +145,10 @@ As of February 2026, the agent A and B online/offline status indicators are upda
 
 For more, see code comments and the GUI Settings tab.
 
+## Direct questions (how Send/Enter works)
+
+- If you type text in the chat box and press **Send** or **Enter** while no conversation is running, the text will be used as the initial prompt (greeting) for the new conversation — equivalent to asking a single LLM question.
+- If a conversation is already running, typing in the chat box and pressing **Send** will inject that text as a user message to both agents without modifying the greeting field — both agents will receive and answer the question in sequence.
+
+This behavior lets you either start a focused Q&A (type a question then Send) or interrupt an ongoing multi-turn exchange with an injected question.
+
