@@ -76,11 +76,17 @@ class OllamaGUI:
                 req = urllib.request.Request(url.rstrip('/') + '/v1/models')
                 with urllib.request.urlopen(req, timeout=1) as resp:
                     if resp.status == 200:
-                        status_label.config(text='●', foreground='green')
+                        try:
+                            self.root.after(0, lambda: status_label.config(text='●', foreground='green'))
+                        except Exception:
+                            pass
                         return
             except Exception:
                 pass
-            status_label.config(text='●', foreground='red')
+            try:
+                self.root.after(0, lambda: status_label.config(text='●', foreground='red'))
+            except Exception:
+                pass
         threading.Thread(target=worker, daemon=True).start()
 
 
@@ -168,6 +174,7 @@ class OllamaGUI:
         ttk.Label(agent_frame, text='Persona:').grid(row=1, column=0, sticky='w', padx=(0,6), pady=6)
         self.a_persona = ttk.Entry(agent_frame, width=36)
         self.a_persona.grid(row=1, column=1, sticky='w', pady=6)
+        # persona file selector moved to Settings tab
         ttk.Label(agent_frame, text='Name:').grid(row=1, column=6, sticky='w', padx=(12,6), pady=6)
         self.a_name = ttk.Entry(agent_frame, width=12)
         self.a_name.grid(row=1, column=7, sticky='w', pady=6)
@@ -217,6 +224,7 @@ class OllamaGUI:
         ttk.Label(agent_frame, text='Persona:').grid(row=3, column=0, sticky='w', padx=(0,6), pady=6)
         self.b_persona = ttk.Entry(agent_frame, width=36)
         self.b_persona.grid(row=3, column=1, sticky='w', pady=6)
+        # persona file selector moved to Settings tab
         ttk.Label(agent_frame, text='Name:').grid(row=3, column=6, sticky='w', padx=(12,6), pady=6)
         self.b_name = ttk.Entry(agent_frame, width=12)
         self.b_name.grid(row=3, column=7, sticky='w', pady=6)
@@ -450,6 +458,85 @@ class OllamaGUI:
             rb.grid(row=row, column=0, sticky='w', padx=12)
             ttk.Label(st, text=desc, wraplength=400, foreground='#555').grid(row=row, column=1, sticky='w', padx=4)
             row += 1
+
+        # --- Persona Presets and Files (moved here for clarity) ---
+        persona_frame = ttk.LabelFrame(self.settings_tab, text='Personas')
+        persona_frame.pack(fill='x', padx=6, pady=(12,6))
+        ttk.Label(persona_frame, text='A Preset:').grid(row=0, column=0, sticky='w', padx=4, pady=4)
+        try:
+            a_presets = list(self.persona_presets.keys()) if hasattr(self, 'persona_presets') else []
+        except Exception:
+            a_presets = []
+        self.a_preset_settings = ttk.Combobox(persona_frame, width=28, values=a_presets)
+        self.a_preset_settings.grid(row=0, column=1, sticky='w', pady=4)
+        try:
+            self.a_preset_settings.bind('<<ComboboxSelected>>', lambda e: self._apply_preset(self.a_preset_settings.get(), self.a_age, self.a_quirk, self.a_persona))
+        except Exception:
+            pass
+
+        ttk.Label(persona_frame, text='A File:').grid(row=0, column=2, sticky='w', padx=4, pady=4)
+        try:
+            ava_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.lower().startswith('persona_ava') and f.lower().endswith('.txt')]
+        except Exception:
+            ava_files = []
+        self.a_persona_file_settings = ttk.Combobox(persona_frame, width=36, values=ava_files)
+        self.a_persona_file_settings.grid(row=0, column=3, sticky='w', pady=4)
+        def _on_a_persona_file_settings(evt=None):
+            fn = self.a_persona_file_settings.get().strip()
+            if not fn: return
+            try:
+                p = os.path.join(os.path.dirname(__file__), fn)
+                with open(p, 'r', encoding='utf-8') as pf:
+                    txt = pf.read().strip()
+                try: self.a_persona.delete(0, tk.END); self.a_persona.insert(0, txt)
+                except Exception: pass
+                try: self.queue.put(('status', f'Loaded persona file: {fn}'))
+                except Exception: pass
+            except Exception as e:
+                try: messagebox.showerror('Persona Load', f'Failed to load {fn}: {e}')
+                except Exception: pass
+        try:
+            self.a_persona_file_settings.bind('<<ComboboxSelected>>', _on_a_persona_file_settings)
+        except Exception:
+            pass
+
+        ttk.Label(persona_frame, text='B Preset:').grid(row=1, column=0, sticky='w', padx=4, pady=4)
+        try:
+            b_presets = list(self.persona_presets.keys()) if hasattr(self, 'persona_presets') else []
+        except Exception:
+            b_presets = []
+        self.b_preset_settings = ttk.Combobox(persona_frame, width=28, values=b_presets)
+        self.b_preset_settings.grid(row=1, column=1, sticky='w', pady=4)
+        try:
+            self.b_preset_settings.bind('<<ComboboxSelected>>', lambda e: self._apply_preset(self.b_preset_settings.get(), self.b_age, self.b_quirk, self.b_persona))
+        except Exception:
+            pass
+
+        ttk.Label(persona_frame, text='B File:').grid(row=1, column=2, sticky='w', padx=4, pady=4)
+        try:
+            orion_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.lower().startswith('persona_orion') and f.lower().endswith('.txt')]
+        except Exception:
+            orion_files = []
+        self.b_persona_file_settings = ttk.Combobox(persona_frame, width=36, values=orion_files)
+        self.b_persona_file_settings.grid(row=1, column=3, sticky='w', pady=4)
+        def _on_b_persona_file_settings(evt=None):
+            fn = self.b_persona_file_settings.get().strip()
+            if not fn: return
+            try:
+                p = os.path.join(os.path.dirname(__file__), fn)
+                with open(p, 'r', encoding='utf-8') as pf:
+                    txt = pf.read().strip()
+                try: self.b_persona.delete(0, tk.END); self.b_persona.insert(0, txt)
+                except Exception: pass
+                try: self.queue.put(('status', f'Loaded persona file: {fn}'))
+                except Exception: pass
+            except Exception as e:
+                try: messagebox.showerror('Persona Load', f'Failed to load {fn}: {e}')
+                except Exception: pass
+        try:
+            self.b_persona_file_settings.bind('<<ComboboxSelected>>', _on_b_persona_file_settings)
+        except Exception:
+            pass
 
         model_mgmt = ttk.LabelFrame(self.settings_tab, text='Model Management')
         model_mgmt.pack(fill='x', padx=6, pady=(12,6))
@@ -1060,6 +1147,7 @@ class OllamaGUI:
             except Exception: pass
         cfg = {
             'a_url': self.a_url.get().strip(),
+            'a_name': self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A',
             'a_model': self.a_model.get().strip(),
             'a_persona': self.a_persona.get().strip(),
             'a_age': self.a_age.get().strip(),
@@ -1093,6 +1181,7 @@ class OllamaGUI:
                 'stop': [s.strip() for s in self.b_stop.get().split(',') if s.strip()],
                 'stream': bool(self.b_stream.get()),
             },
+            'b_name': self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B',
         }
         self.thread = threading.Thread(target=self._run_conversation, args=(cfg, self.stop_event, self.queue), daemon=True)
         self.thread.start()
@@ -1140,16 +1229,27 @@ class OllamaGUI:
             try:
                 try:
                     if button:
-                        button.config(state='disabled')
+                        try:
+                            self.root.after(0, lambda: button.config(state='disabled'))
+                        except Exception:
+                            button.config(state='disabled')
                 except Exception:
                     pass
                 if not server_url:
                     self.queue.put(('status', 'Server URL empty'))
                     if status_label is not None:
-                        try: status_label.config(text='●', foreground='gray')
+                        try:
+                            try:
+                                self.root.after(0, lambda: status_label.config(text='●', foreground='gray'))
+                            except Exception:
+                                status_label.config(text='●', foreground='gray')
                         except Exception: pass
                     if agent in ('a_settings', 'b_settings'):
-                        self._update_models_text(agent, [])
+                        try:
+                            self.root.after(0, lambda: self._update_models_text(agent, []))
+                        except Exception:
+                            try: self._update_models_text(agent, [])
+                            except Exception: pass
                     return
                 endpoints = ['/models', '/v1/models', '/api/models']
                 models = []
@@ -1196,7 +1296,10 @@ class OllamaGUI:
                     try:
                         if status_label is not None:
                             color_map = {'green': 'green', 'red': 'red', 'gray': 'gray'}
-                            status_label.config(text='●', foreground=color_map.get(col, 'gray'))
+                            try:
+                                self.root.after(0, lambda: status_label.config(text='●', foreground=color_map.get(col, 'gray')))
+                            except Exception:
+                                status_label.config(text='●', foreground=color_map.get(col, 'gray'))
                     except Exception:
                         pass
 
@@ -1207,19 +1310,41 @@ class OllamaGUI:
                             seen.add(m); unique.append(m)
                     if combobox:
                         try:
-                            combobox['values'] = unique
-                            cur = combobox.get()
-                            if cur not in unique and unique:
-                                combobox.set(unique[0])
+                            try:
+                                try:
+                                    self.root.after(0, lambda: combobox.config(values=unique))
+                                except Exception:
+                                    combobox.config(values=unique)
+                                if unique:
+                                    try:
+                                        self.root.after(0, lambda: combobox.set(unique[0]))
+                                    except Exception:
+                                        combobox.set(unique[0])
+                            except Exception:
+                                pass
                         except Exception:
                             pass
-                    self._add_model_status(f'Loaded {len(unique)} models from {server_url}', 'info')
+                    try:
+                        try:
+                            self.root.after(0, lambda: self._add_model_status(f'Loaded {len(unique)} models from {server_url}', 'info'))
+                        except Exception:
+                            self._add_model_status(f'Loaded {len(unique)} models from {server_url}', 'info')
+                    except Exception:
+                        pass
                     # Always update the model list in the main GUI combobox as well
                     # Always update the correct Listbox in Settings after fetch
                     if agent == 'a_settings':
-                        self._update_models_text('a_settings', unique)
+                        try:
+                            self.root.after(0, lambda: self._update_models_text('a_settings', unique))
+                        except Exception:
+                            try: self._update_models_text('a_settings', unique)
+                            except Exception: pass
                     if agent == 'b_settings':
-                        self._update_models_text('b_settings', unique)
+                        try:
+                            self.root.after(0, lambda: self._update_models_text('b_settings', unique))
+                        except Exception:
+                            try: self._update_models_text('b_settings', unique)
+                            except Exception: pass
                     if status_label is not None:
                         try: _set_icon_color('green')
                         except Exception: pass
@@ -1227,7 +1352,11 @@ class OllamaGUI:
                     msg = f'No models found at {server_url}'
                     if last_exc: msg += f': {repr(last_exc)}'
                     if agent:
-                        self._update_models_text(agent, [])
+                        try:
+                            self.root.after(0, lambda: self._update_models_text(agent, []))
+                        except Exception:
+                            try: self._update_models_text(agent, [])
+                            except Exception: pass
                     try:
                         import datetime
                         dbg_path = 'model_fetch_debug.log'
@@ -1238,9 +1367,20 @@ class OllamaGUI:
                             df.write('\n')
                     except Exception:
                         pass
-                    self._add_model_status(msg + ' (see model_fetch_debug.log)', 'error')
-                    try: messagebox.showerror('Model Fetch Failed', msg + '\n\nSee model_fetch_debug.log for details.')
-                    except Exception: pass
+                    try:
+                        try:
+                            self.root.after(0, lambda: self._add_model_status(msg + ' (see model_fetch_debug.log)', 'error'))
+                        except Exception:
+                            self._add_model_status(msg + ' (see model_fetch_debug.log)', 'error')
+                    except Exception:
+                        pass
+                    try:
+                        try:
+                            self.root.after(0, lambda: messagebox.showerror('Model Fetch Failed', msg + '\n\nSee model_fetch_debug.log for details.'))
+                        except Exception:
+                            messagebox.showerror('Model Fetch Failed', msg + '\n\nSee model_fetch_debug.log for details.')
+                    except Exception:
+                        pass
                     if status_label is not None:
                         try: _set_icon_color('red')
                         except Exception: pass
@@ -1249,17 +1389,29 @@ class OllamaGUI:
             finally:
                 try:
                     if button:
-                        button.config(state='normal')
+                        try:
+                            self.root.after(0, lambda: button.config(state='normal'))
+                        except Exception:
+                            button.config(state='normal')
                 except Exception: pass
                 if agent == 'b_settings':
-                    self._add_model_status('Finished refreshing models for agent B', 'info')
+                    try:
+                        try:
+                            self.root.after(0, lambda: self._add_model_status('Finished refreshing models for agent B', 'info'))
+                        except Exception:
+                            self._add_model_status('Finished refreshing models for agent B', 'info')
+                    except Exception:
+                        pass
 
         def run_and_force_update():
             worker()
             # Force update of the combobox UI in the main thread
             if combobox:
                 try:
-                    combobox.update_idletasks()
+                    try:
+                        self.root.after(0, combobox.update_idletasks)
+                    except Exception:
+                        combobox.update_idletasks()
                 except Exception:
                     pass
         threading.Thread(target=run_and_force_update, daemon=True).start()
@@ -1436,8 +1588,8 @@ class OllamaGUI:
             persona_a = build_persona(cfg.get('a_persona'), cfg.get('a_age'), cfg.get('a_quirk'))
             persona_b = build_persona(cfg.get('b_persona'), cfg.get('b_age'), cfg.get('b_quirk'))
 
-            name_a = (self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A')
-            name_b = (self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B')
+            name_a = cfg.get('a_name') or 'Agent_A'
+            name_b = cfg.get('b_name') or 'Agent_B'
             instruction = (
                 "Important: In every reply, explicitly reference the discussion topic and keep responses focused on it. "
                 "Begin each response by briefly restating the topic and avoid unrelated tangents."
@@ -1456,7 +1608,6 @@ class OllamaGUI:
             queue.put(('b', f"(initial) {initial_prompt}"))
             messages_b.append({'role': 'user', 'content': initial_prompt})
             try:
-                name_b = (self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B')
                 brain.add_to_brain(name_b, initial_prompt, 'user')
             except Exception:
                 pass
@@ -1512,7 +1663,6 @@ class OllamaGUI:
                 content_b = trunc(resp_b.get('content', ''), 'b')
                 queue.put(('b', content_b))
                 try:
-                    name_b = (self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B')
                     brain.add_to_brain(name_b, content_b, 'assistant')
                 except Exception:
                     pass
@@ -1538,7 +1688,6 @@ class OllamaGUI:
                 content_a = trunc(resp_a.get('content', ''), 'a')
                 queue.put(('a', content_a))
                 try:
-                    name_a = (self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A')
                     brain.add_to_brain(name_a, content_a, 'assistant')
                 except Exception:
                     pass
@@ -1556,7 +1705,15 @@ class OllamaGUI:
                 time.sleep(delay)
 
         except Exception as e:
-            queue.put(('status', f'Error: {e}'))
+            try:
+                import traceback
+                tb = traceback.format_exc()
+                with open('thread_error.log', 'a', encoding='utf-8') as ef:
+                    ef.write(tb + '\n')
+                queue.put(('status', f'Error: {e} (see thread_error.log)'))
+            except Exception:
+                try: queue.put(('status', f'Error: {e}'))
+                except Exception: pass
         finally:
             try:
                 if log_file: log_file.close()
