@@ -76,7 +76,7 @@ Override endpoints/models with environment variables:
 Example:
 
 ```sh
-AGENT_B_URL="http://192.168.127.121:11434" AGENT_B_MODEL="llama2" python multi_ollama_chat.py
+AGENT_B_URL="http://192.168.xxx.xxx:11434" AGENT_B_MODEL="llama2" python multi_ollama_chat.py
 ```
 
 While running, type `stop` (or `q`/`quit`) and press Enter to end early.
@@ -153,4 +153,5 @@ For more, see code comments and the GUI Settings tab.
 - If a conversation is already running, typing in the chat box and pressing **Send** will inject that text as a user message to both agents without modifying the greeting field — both agents will receive and answer the question in sequence.
 
 This behavior lets you either start a focused Q&A (type a question then Send) or interrupt an ongoing multi-turn exchange with an injected question.
+
 
