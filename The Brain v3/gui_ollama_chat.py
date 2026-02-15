@@ -148,12 +148,18 @@ class OllamaGUI:
         ttk.Label(agent_frame, text='Agent A URL:').grid(row=0, column=0, sticky='w', padx=(0,6), pady=6)
         self.a_url = ttk.Entry(agent_frame, width=36)
         self.a_url.grid(row=0, column=1, sticky='w', pady=6)
+        # Persist URLs when user edits them (focus-out or Enter)
+        try:
+            self.a_url.bind('<FocusOut>', lambda e: self.save_config())
+            self.a_url.bind('<Return>', lambda e: self.save_config())
+        except Exception:
+            pass
         ttk.Label(agent_frame, text='Model:').grid(row=0, column=2, sticky='w', padx=(12,6), pady=6)
         self.a_model = ttk.Combobox(agent_frame, width=24, values=[])
         self.a_model.grid(row=0, column=3, sticky='w', pady=6)
         self.a_model_status = ttk.Label(agent_frame, text='●', foreground='gray')
         self.a_model_status.grid(row=0, column=4, padx=6, pady=6)
-        self.a_refresh_btn = ttk.Button(agent_frame, text='↻', width=3, command=lambda: self._fetch_models(self.a_url.get().strip(), self.a_model, self.a_refresh_btn, self.a_model_status, None))
+        self.a_refresh_btn = ttk.Button(agent_frame, text='↻', width=3, command=lambda: (self.save_config(), self._fetch_models(self.a_url.get().strip(), self.a_model, self.a_refresh_btn, self.a_model_status, None)))
         self.a_refresh_btn.grid(row=0, column=5, padx=6, pady=6)
         ttk.Label(agent_frame, text='Preset:').grid(row=0, column=6, sticky='w', padx=(12,6), pady=6)
         self.a_preset = ttk.Combobox(agent_frame, width=20, values=[])
@@ -192,12 +198,17 @@ class OllamaGUI:
         ttk.Label(agent_frame, text='Agent B URL:').grid(row=2, column=0, sticky='w', padx=(0,6), pady=6)
         self.b_url = ttk.Entry(agent_frame, width=36)
         self.b_url.grid(row=2, column=1, sticky='w', pady=6)
+        try:
+            self.b_url.bind('<FocusOut>', lambda e: self.save_config())
+            self.b_url.bind('<Return>', lambda e: self.save_config())
+        except Exception:
+            pass
         ttk.Label(agent_frame, text='Model:').grid(row=2, column=2, sticky='w', padx=(12,6), pady=6)
         self.b_model = ttk.Combobox(agent_frame, width=24, values=[])
         self.b_model.grid(row=2, column=3, sticky='w', pady=6)
         self.b_model_status = ttk.Label(agent_frame, text='●', foreground='gray')
         self.b_model_status.grid(row=2, column=4, padx=6, pady=6)
-        self.b_refresh_btn = ttk.Button(agent_frame, text='↻', width=3, command=lambda: self._fetch_models(self.b_url.get().strip(), self.b_model, self.b_refresh_btn, self.b_model_status, None))
+        self.b_refresh_btn = ttk.Button(agent_frame, text='↻', width=3, command=lambda: (self.save_config(), self._fetch_models(self.b_url.get().strip(), self.b_model, self.b_refresh_btn, self.b_model_status, None)))
         self.b_refresh_btn.grid(row=2, column=5, padx=6, pady=6)
         ttk.Label(agent_frame, text='Preset:').grid(row=2, column=6, sticky='w', padx=(12,6), pady=6)
         self.b_preset = ttk.Combobox(agent_frame, width=20, values=[])
@@ -401,6 +412,24 @@ class OllamaGUI:
             self.root.after(200, self._refresh_b_models)
         except Exception:
             pass
+        # Load persona presets and populate preset selectors
+        try:
+            self.load_personas()
+            preset_names = list(self.persona_presets.keys())
+            try:
+                if hasattr(self, 'a_preset'):
+                    self.a_preset['values'] = preset_names
+                if hasattr(self, 'b_preset'):
+                    self.b_preset['values'] = preset_names
+                if preset_names:
+                    try: self.a_preset.set(preset_names[0])
+                    except Exception: pass
+                    try: self.b_preset.set(preset_names[0])
+                    except Exception: pass
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     def _init_settings_tab(self):
         # Clear and rebuild the Settings tab model management menu
@@ -436,7 +465,7 @@ class OllamaGUI:
         self.a_model_entry = ttk.Entry(model_mgmt, width=30)
         self.a_model_entry.grid(row=3, column=0, sticky='w', padx=2, pady=(2,0))
         self.a_model_entry.insert(0, '')
-        self.refresh_a_btn = ttk.Button(model_mgmt, text='Refresh A', command=lambda: self._fetch_models(self.a_url.get().strip(), self.a_model, self.refresh_a_btn, self.a_model_status, None, agent='a_settings'))
+        self.refresh_a_btn = ttk.Button(model_mgmt, text='Refresh A', command=lambda: (self.save_config(), self._fetch_models(self.a_url.get().strip(), self.a_model, self.refresh_a_btn, self.a_model_status, None, agent='a_settings')))
         self.refresh_a_btn.grid(row=4, column=0, sticky='w', padx=2, pady=2)
         self.pull_a_btn = ttk.Button(model_mgmt, text='Pull → Agent A', command=lambda: self._pull_to_urls([self.a_url.get().strip()], self._get_model_to_pull('a')))
         self.pull_a_btn.grid(row=5, column=0, padx=4, pady=2)
@@ -450,7 +479,7 @@ class OllamaGUI:
         self.b_model_entry = ttk.Entry(model_mgmt, width=30)
         self.b_model_entry.grid(row=3, column=1, sticky='w', padx=2, pady=(2,0))
         self.b_model_entry.insert(0, '')
-        self.refresh_b_btn = ttk.Button(model_mgmt, text='Refresh B', command=lambda: self._fetch_models(self.b_url.get().strip(), self.b_model, self.refresh_b_btn, self.b_model_status, None, agent='b_settings'))
+        self.refresh_b_btn = ttk.Button(model_mgmt, text='Refresh B', command=lambda: (self.save_config(), self._fetch_models(self.b_url.get().strip(), self.b_model, self.refresh_b_btn, self.b_model_status, None, agent='b_settings')))
         self.refresh_b_btn.grid(row=4, column=1, sticky='w', padx=2, pady=2)
         self.pull_b_btn = ttk.Button(model_mgmt, text='Pull → Agent B', command=lambda: self._pull_to_urls([self.b_url.get().strip()], self._get_model_to_pull('b')))
         self.pull_b_btn.grid(row=5, column=1, padx=4, pady=2)
@@ -759,6 +788,27 @@ class OllamaGUI:
         # Schedule next poll
         self.root.after(2000, self._poll_connectivity)
 
+    def _call_ollama_with_timeout(self, client_url, model, messages, runtime_options=None, timeout=20):
+        """Call chat_with_ollama in a thread and return its result or a timeout error."""
+        result = {}
+        def worker():
+            try:
+                res = chat_with_ollama(client_url, model, messages, runtime_options=runtime_options)
+            except Exception as e:
+                res = {"content": f"[ERROR calling {client_url}: {e}]"}
+            try:
+                result['res'] = res
+            except Exception:
+                result['res'] = {"content": "[ERROR]"}
+
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
+        t.join(timeout)
+        if t.is_alive():
+            # Thread still running — return a timeout placeholder and leave the worker to finish in background
+            return {"content": f"[ERROR: timeout after {timeout}s contacting {client_url}]"}
+        return result.get('res', {"content": "[ERROR: no response]"})
+
     def load_personas(self, path=DEFAULT_PERSONAS_PATH):
         if not os.path.exists(path):
             # nothing to load
@@ -781,6 +831,8 @@ class OllamaGUI:
             'b_url': self.b_url.get().strip(),
             'a_model': self.a_model.get().strip(),
             'b_model': self.b_model.get().strip(),
+            'a_name': self.a_name.get().strip(),
+            'b_name': self.b_name.get().strip(),
             'a_persona': self.a_persona.get().strip(),
             'b_persona': self.b_persona.get().strip(),
             'a_age': self.a_age.get().strip(),
@@ -827,7 +879,6 @@ class OllamaGUI:
                 cfg = json.load(f)
         except Exception:
             return
-        try:
             def s(entry, val):
                 try:
                     if isinstance(entry, ttk.Entry):
@@ -842,6 +893,10 @@ class OllamaGUI:
             s(self.a_model, cfg.get('a_model', self.a_model.get()))
             s(self.b_model, cfg.get('b_model', self.b_model.get()))
             s(self.a_persona, cfg.get('a_persona', self.a_persona.get()))
+            try:
+                s(self.a_name, cfg.get('a_name', self.a_name.get()))
+            except Exception:
+                pass
             s(self.b_persona, cfg.get('b_persona', self.b_persona.get()))
             s(self.a_age, cfg.get('a_age', self.a_age.get()))
             s(self.b_age, cfg.get('b_age', self.b_age.get()))
@@ -918,7 +973,13 @@ class OllamaGUI:
                 except Exception: pass
             except Exception:
                 pass
+        try:
+            s(self.b_name, cfg.get('b_name', self.b_name.get()))
         except Exception:
+            pass
+        except Exception:
+            pass
+        finally:
             pass
 
     def _poll_queue(self):
@@ -1331,6 +1392,17 @@ class OllamaGUI:
             self.b_quirk.insert(0, 'uses slang')
         except Exception:
             pass
+        try:
+            try:
+                self.a_name.delete(0, tk.END); self.a_name.insert(0, 'Ava')
+            except Exception:
+                pass
+            try:
+                self.b_name.delete(0, tk.END); self.b_name.insert(0, 'Orion')
+            except Exception:
+                pass
+        except Exception:
+            pass
         try: self.max_chars_a.set(120); self.max_chars_b.set(120)
         except Exception: pass
         try: self.short_turn_var.set(True)
@@ -1350,6 +1422,10 @@ class OllamaGUI:
         log_file = None
         try:
             topic = cfg['topic']
+            try:
+                queue.put(('status', f"Using topic: {topic}"))
+            except Exception:
+                pass
             def build_persona(base, age, quirk):
                 parts = []
                 if base: parts.append(base)
@@ -1362,8 +1438,12 @@ class OllamaGUI:
 
             name_a = (self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A')
             name_b = (self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B')
-            sys_a = f"You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}".strip()
-            sys_b = f"You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}".strip()
+            instruction = (
+                "Important: In every reply, explicitly reference the discussion topic and keep responses focused on it. "
+                "Begin each response by briefly restating the topic and avoid unrelated tangents."
+            )
+            sys_a = f"{instruction} You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}".strip()
+            sys_b = f"{instruction} You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}".strip()
 
             messages_a = [{'role': 'system', 'content': sys_a}]
             messages_b = [{'role': 'system', 'content': sys_b}]
@@ -1428,7 +1508,7 @@ class OllamaGUI:
                     'stop': cfg.get('b_runtime', {}).get('stop') or None,
                     'stream': bool(cfg.get('b_runtime', {}).get('stream', False)),
                 }
-                resp_b = chat_with_ollama(b_url, b_model, messages_b, runtime_options=b_runtime)
+                resp_b = self._call_ollama_with_timeout(b_url, b_model, messages_b, runtime_options=b_runtime, timeout=20)
                 content_b = trunc(resp_b.get('content', ''), 'b')
                 queue.put(('b', content_b))
                 try:
@@ -1454,7 +1534,7 @@ class OllamaGUI:
                     'stop': cfg.get('a_runtime', {}).get('stop') or None,
                     'stream': bool(cfg.get('a_runtime', {}).get('stream', False)),
                 }
-                resp_a = chat_with_ollama(a_url, a_model, messages_a, runtime_options=a_runtime)
+                resp_a = self._call_ollama_with_timeout(a_url, a_model, messages_a, runtime_options=a_runtime, timeout=20)
                 content_a = trunc(resp_a.get('content', ''), 'a')
                 queue.put(('a', content_a))
                 try:
@@ -1489,7 +1569,8 @@ def main():
     app = OllamaGUI(root)
 
     try:
-        app.load_config()
+        # Always start with the built-in defaults rather than loading previous config
+        app.reset_defaults()
     except Exception:
         pass
     # Ensure model lists auto-refresh after config is loaded and widgets are ready
