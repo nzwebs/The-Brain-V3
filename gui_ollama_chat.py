@@ -544,84 +544,10 @@ class OllamaGUI:
             ttk.Label(st, text=desc, wraplength=400, foreground='#555').grid(row=row, column=1, sticky='w', padx=4)
             row += 1
 
-        # --- Persona Presets and Files (moved here for clarity) ---
+        # --- Persona Presets (moved here previously) ---
         persona_frame = ttk.LabelFrame(self.settings_tab, text='Personas')
         persona_frame.pack(fill='x', padx=6, pady=(12,6))
-        ttk.Label(persona_frame, text='A Preset:').grid(row=0, column=0, sticky='w', padx=4, pady=4)
-        try:
-            a_presets = list(self.persona_presets.keys()) if hasattr(self, 'persona_presets') else []
-        except Exception:
-            a_presets = []
-        self.a_preset_settings = ttk.Combobox(persona_frame, width=28, values=a_presets)
-        self.a_preset_settings.grid(row=0, column=1, sticky='w', pady=4)
-        try:
-            self.a_preset_settings.bind('<<ComboboxSelected>>', lambda e: self._apply_preset(self.a_preset_settings.get(), self.a_age, self.a_quirk, self.a_persona))
-        except Exception:
-            pass
-
-        ttk.Label(persona_frame, text='A File:').grid(row=0, column=2, sticky='w', padx=4, pady=4)
-        try:
-            ava_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.lower().startswith('persona_ava') and f.lower().endswith('.txt')]
-        except Exception:
-            ava_files = []
-        self.a_persona_file_settings = ttk.Combobox(persona_frame, width=36, values=ava_files)
-        self.a_persona_file_settings.grid(row=0, column=3, sticky='w', pady=4)
-        def _on_a_persona_file_settings(evt=None):
-            fn = self.a_persona_file_settings.get().strip()
-            if not fn: return
-            try:
-                p = os.path.join(os.path.dirname(__file__), fn)
-                with open(p, 'r', encoding='utf-8') as pf:
-                    txt = pf.read().strip()
-                try: self.a_persona.delete(0, tk.END); self.a_persona.insert(0, txt)
-                except Exception: pass
-                try: self.queue.put(('status', f'Loaded persona file: {fn}'))
-                except Exception: pass
-            except Exception as e:
-                try: messagebox.showerror('Persona Load', f'Failed to load {fn}: {e}')
-                except Exception: pass
-        try:
-            self.a_persona_file_settings.bind('<<ComboboxSelected>>', _on_a_persona_file_settings)
-        except Exception:
-            pass
-
-        ttk.Label(persona_frame, text='B Preset:').grid(row=1, column=0, sticky='w', padx=4, pady=4)
-        try:
-            b_presets = list(self.persona_presets.keys()) if hasattr(self, 'persona_presets') else []
-        except Exception:
-            b_presets = []
-        self.b_preset_settings = ttk.Combobox(persona_frame, width=28, values=b_presets)
-        self.b_preset_settings.grid(row=1, column=1, sticky='w', pady=4)
-        try:
-            self.b_preset_settings.bind('<<ComboboxSelected>>', lambda e: self._apply_preset(self.b_preset_settings.get(), self.b_age, self.b_quirk, self.b_persona))
-        except Exception:
-            pass
-
-        ttk.Label(persona_frame, text='B File:').grid(row=1, column=2, sticky='w', padx=4, pady=4)
-        try:
-            orion_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.lower().startswith('persona_orion') and f.lower().endswith('.txt')]
-        except Exception:
-            orion_files = []
-        self.b_persona_file_settings = ttk.Combobox(persona_frame, width=36, values=orion_files)
-        self.b_persona_file_settings.grid(row=1, column=3, sticky='w', pady=4)
-        def _on_b_persona_file_settings(evt=None):
-            fn = self.b_persona_file_settings.get().strip()
-            if not fn: return
-            try:
-                p = os.path.join(os.path.dirname(__file__), fn)
-                with open(p, 'r', encoding='utf-8') as pf:
-                    txt = pf.read().strip()
-                try: self.b_persona.delete(0, tk.END); self.b_persona.insert(0, txt)
-                except Exception: pass
-                try: self.queue.put(('status', f'Loaded persona file: {fn}'))
-                except Exception: pass
-            except Exception as e:
-                try: messagebox.showerror('Persona Load', f'Failed to load {fn}: {e}')
-                except Exception: pass
-        try:
-            self.b_persona_file_settings.bind('<<ComboboxSelected>>', _on_b_persona_file_settings)
-        except Exception:
-            pass
+        ttk.Label(persona_frame, text='Persona controls are available in the Chat tab.').grid(row=0, column=0, sticky='w', padx=4, pady=4)
 
         model_mgmt = ttk.LabelFrame(self.settings_tab, text='Model Management')
         model_mgmt.pack(fill='x', padx=6, pady=(12,6))
@@ -669,7 +595,22 @@ class OllamaGUI:
         self.model_details_text.tag_configure('warning', foreground='orange')
         self.model_details_text.tag_configure('info', foreground='#222')
         self.copy_all_btn = ttk.Button(model_mgmt, text='Copy All', command=self._copy_model_details)
-        self.copy_all_btn.grid(row=9, column=1, sticky='e', pady=(2,6))
+        self.copy_all_btn.grid(row=11, column=1, sticky='e', pady=(2,6))
+
+        # Pull progress widgets
+        try:
+            self.pull_progress = ttk.Progressbar(model_mgmt, length=360, mode='determinate', maximum=100)
+            self.pull_progress.grid(row=9, column=0, columnspan=2, sticky='w', pady=(4,2))
+            self.pull_progress_label = ttk.Label(model_mgmt, text='')
+            self.pull_progress_label.grid(row=10, column=0, sticky='w')
+            self.cancel_pull_var = tk.BooleanVar(value=False)
+            self.cancel_pull_btn = ttk.Button(model_mgmt, text='Cancel Pull', command=lambda: self.cancel_pull_var.set(True), state='disabled')
+            self.cancel_pull_btn.grid(row=10, column=1, sticky='e', padx=4)
+        except Exception:
+            self.pull_progress = None
+            self.pull_progress_label = None
+            self.cancel_pull_var = None
+            self.cancel_pull_btn = None
 
         # Brain viewer and storage removed per user request
 
@@ -1511,42 +1452,152 @@ class OllamaGUI:
         pass
 
     def _pull_to_urls(self, url_list, model_name):
-        import requests
+        import requests, json
         if not url_list or not model_name:
             messagebox.showerror('Pull Model', 'No server URL or model name specified.')
             return
         for server_url in url_list:
             if not server_url:
                 continue
+            # Reset cancel flag
+            try:
+                if self.cancel_pull_var is not None:
+                    self.cancel_pull_var.set(False)
+            except Exception:
+                pass
             try:
                 status_msg = f'Pulling model {model_name} to {server_url}...'
                 self._set_model_busy(status_msg)
                 self._add_model_status(status_msg, 'info')
                 url = server_url.rstrip('/') + '/api/pull'
-                resp = requests.post(url, json={"name": model_name}, timeout=30)
-                if resp.status_code == 200:
-                    success_msg = f'Model "{model_name}" pulled successfully to {server_url}.'
-                    self._add_model_status(success_msg, 'info')
-                    messagebox.showinfo('Pull Model', success_msg)
-                else:
+
+                # Prepare progress UI (use determinate mode and start at 0)
+                try:
+                    if self.pull_progress is not None:
+                        self.root.after(0, lambda: (self.pull_progress.config(mode='determinate', maximum=100), self.pull_progress.config(value=0), self.pull_progress.update_idletasks()))
+                    if self.pull_progress_label is not None:
+                        self.root.after(0, lambda: self.pull_progress_label.config(text='Starting...'))
+                    if self.cancel_pull_btn is not None:
+                        self.root.after(0, lambda: self.cancel_pull_btn.config(state='normal'))
+                except Exception:
+                    pass
+
+                resp = requests.post(url, json={"name": model_name}, stream=True, timeout=60)
+                if resp.status_code not in (200, 201):
+                    # Non-success — read small body and show error
                     try:
                         err = resp.json().get('error')
                     except Exception:
                         err = resp.text
                     fail_msg = f'Failed to pull model to {server_url}: {err}'
                     self._add_model_status(fail_msg, 'error')
-                    messagebox.showerror('Pull Model', fail_msg)
+                    try: self.root.after(0, lambda: messagebox.showerror('Pull Model', fail_msg))
+                    except Exception: pass
+                else:
+                    # Stream and update progress when possible
+                    cancelled = False
+                    try:
+                        for raw in resp.iter_lines(decode_unicode=True):
+                            if self.cancel_pull_var is not None and self.cancel_pull_var.get():
+                                cancelled = True
+                                self._add_model_status('Pull cancelled by user', 'warning')
+                                break
+                            if not raw:
+                                continue
+                            line = raw.strip()
+                            parsed = None
+                            pct = None
+                            try:
+                                parsed = json.loads(line)
+                            except Exception:
+                                parsed = None
+                            msg_text = None
+                            if isinstance(parsed, dict):
+                                # Common keys: 'progress', 'percent', 'status', 'message', 'downloaded','total'
+                                for k in ('progress','percent','download_percent'):
+                                    if k in parsed:
+                                        try:
+                                            pct = float(parsed.get(k) or 0.0)
+                                        except Exception:
+                                            pct = None
+                                        break
+                                if pct is None and 'downloaded' in parsed and 'total' in parsed:
+                                    try:
+                                        downloaded = float(parsed.get('downloaded') or 0)
+                                        total = float(parsed.get('total') or 1)
+                                        pct = (downloaded / total) * 100.0
+                                    except Exception:
+                                        pct = None
+                                msg_text = parsed.get('status') or parsed.get('message') or parsed.get('msg') or None
+                            else:
+                                msg_text = line
+
+                            if pct is not None:
+                                try:
+                                    p = max(0, min(100, int(pct)))
+                                    def _set_pct(v=p):
+                                        try:
+                                            if self.pull_progress is not None:
+                                                try:
+                                                    self.pull_progress.config(mode='determinate', value=v)
+                                                    self.pull_progress.update_idletasks()
+                                                except Exception:
+                                                    try:
+                                                        self.pull_progress['value'] = v
+                                                    except Exception:
+                                                        pass
+                                            if self.pull_progress_label is not None:
+                                                self.pull_progress_label.config(text=f'{v}%')
+                                        except Exception:
+                                            pass
+                                    self.root.after(0, _set_pct)
+                                except Exception:
+                                    pass
+                            else:
+                                # show textual status
+                                if msg_text:
+                                    try:
+                                        self.root.after(0, lambda t=msg_text: self.pull_progress_label.config(text=str(t)[:200]))
+                                    except Exception:
+                                        pass
+                    except Exception as stream_exc:
+                        self._add_model_status(f'Error during pull stream: {stream_exc}', 'error')
+
+                    # Completed or cancelled
+                    if cancelled:
+                        try: self.root.after(0, lambda: messagebox.showinfo('Pull Model', f'Pull cancelled for {server_url}'))
+                        except Exception: pass
+                    else:
+                        success_msg = f'Model "{model_name}" pulled successfully to {server_url}.'
+                        self._add_model_status(success_msg, 'info')
+                        try: self.root.after(0, lambda: messagebox.showinfo('Pull Model', success_msg))
+                        except Exception: pass
+
+                # Finalize progress UI
+                try:
+                    if self.pull_progress is not None:
+                        self.root.after(0, lambda: (self.pull_progress.config(mode='determinate', value=100), self.pull_progress.update_idletasks()))
+                    if self.pull_progress_label is not None:
+                        self.root.after(0, lambda: self.pull_progress_label.config(text=''))
+                    if self.cancel_pull_btn is not None:
+                        self.root.after(0, lambda: self.cancel_pull_btn.config(state='disabled'))
+                except Exception:
+                    pass
             except Exception as e:
                 err_msg = f'Error pulling model to {server_url}: {e}'
                 self._add_model_status(err_msg, 'error')
-                messagebox.showerror('Pull Model', err_msg)
+                try: self.root.after(0, lambda: messagebox.showerror('Pull Model', err_msg))
+                except Exception: pass
             finally:
                 self._clear_model_busy()
                 # Refresh model list for the relevant agent
-                if server_url == self.a_url.get().strip():
-                    self._refresh_a_models()
-                elif server_url == self.b_url.get().strip():
-                    self._refresh_b_models()
+                try:
+                    if server_url == self.a_url.get().strip():
+                        self._refresh_a_models()
+                    elif server_url == self.b_url.get().strip():
+                        self._refresh_b_models()
+                except Exception:
+                    pass
 
     def _remove_model(self, server_url, model_name):
         # Remove a model from the Ollama server using the correct API endpoint
@@ -1687,7 +1738,8 @@ class OllamaGUI:
             name_b = cfg.get('b_name') or 'Agent_B'
             instruction = (
                 "Important: In every reply, explicitly reference the discussion topic and keep responses focused on it. "
-                "Begin each response by briefly restating the topic and avoid unrelated tangents."
+                "Begin each response by briefly restating the topic and avoid unrelated tangents. "
+                "Always respond in complete sentences. Do not use sentence fragments or single-word replies; each response should be a full sentence ending with appropriate punctuation."
             )
             sys_a = f"{instruction} You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}".strip()
             sys_b = f"{instruction} You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}".strip()
@@ -1729,21 +1781,69 @@ class OllamaGUI:
                 if not text: return ''
                 t = text.strip()
                 maxc = cfg.get('max_chars_a') if agent == 'a' else cfg.get('max_chars_b')
+                import re
+                # Short-turn: prefer the first full sentence. If the first sentence exists, return it whole
                 if cfg.get('short_turn'):
-                    import re
                     m = re.search(r"(.+?[.!?])(\s|$)", t, re.S)
-                    if m: s = m.group(1).strip()
+                    if m:
+                        s = m.group(1).strip()
+                        # If a max char limit exists but would force cutting the first full sentence,
+                        # prefer returning the full sentence to preserve completeness.
+                        if maxc and maxc > 0 and len(s) > maxc:
+                            return s
+                        limit = maxc if maxc and maxc > 0 else 120
+                        if len(s) > limit:
+                            return s
+                        return s
                     else:
-                        parts = re.split(r'[,;:\\-]\s*', t, maxsplit=1); s = parts[0].strip()
-                    limit = maxc if maxc and maxc > 0 else 120
-                    if len(s) > limit: s = s[:limit].rstrip();
-                    if not s.endswith(('.', '!', '?')): s = s.rstrip(' ,;:') + '…'
+                        parts = re.split(r'[,;:\\-]\s*', t, maxsplit=1)
+                        s = parts[0].strip()
+                        if maxc and maxc > 0 and len(s) > maxc:
+                            return s
+                        if not s.endswith(('.', '!', '?')):
+                            s = s.rstrip(' ,;:') + '…'
+                        return s
+
+                # Non-short-turn: if we must truncate, cut at the last sentence boundary within the limit
+                if maxc and maxc > 0 and len(t) > maxc:
+                    snippet = t[:maxc]
+                    # look for the last sentence terminator
+                    last_pos = max(snippet.rfind('.'), snippet.rfind('!'), snippet.rfind('?'))
+                    if last_pos != -1 and last_pos > 0:
+                        s = snippet[:last_pos+1].strip()
+                        return s
+                    # fallback: try to return the first full sentence from the whole text
+                    m2 = re.search(r"(.+?[.!?])(\s|$)", t, re.S)
+                    if m2:
+                        return m2.group(1).strip()
+                    # last resort: truncate and append ellipsis
+                    s = snippet.strip()
+                    if not s.endswith(('.', '!', '?')):
+                        s = s.rstrip(' ,;:') + '…'
                     return s
-                if maxc and maxc > 0:
-                    s = t[:maxc].strip()
-                    if len(t) > maxc and not s.endswith(('.', '!', '?')): s = s.rstrip(' ,;:') + '…'
-                    return s
+
                 return t
+
+            def dedupe_sentences(text: str) -> str:
+                import re
+                if not text:
+                    return ''
+                # Split into sentence-like chunks (keep trailing punctuation)
+                parts = re.findall(r"[^.!?\n]+[\.!?…]?", text, flags=re.S)
+                if not parts:
+                    return text.strip()
+                out = []
+                prev = None
+                for p in parts:
+                    s = p.strip()
+                    if not s:
+                        continue
+                    # If identical to previous sentence, skip
+                    if prev is not None and s == prev:
+                        continue
+                    out.append(s)
+                    prev = s
+                return ' '.join(out).strip()
 
 
             for i in range(turns):
@@ -1783,6 +1883,7 @@ class OllamaGUI:
                 }
                 resp_b = self._call_ollama_with_timeout(b_url, b_model, messages_b, runtime_options=b_runtime, timeout=20)
                 content_b = trunc(resp_b.get('content', ''), 'b')
+                content_b = dedupe_sentences(content_b)
                 out_queue.put(('b', content_b))
                 # brain logging removed
                 if log_file:
@@ -1805,6 +1906,7 @@ class OllamaGUI:
                 }
                 resp_a = self._call_ollama_with_timeout(a_url, a_model, messages_a, runtime_options=a_runtime, timeout=20)
                 content_a = trunc(resp_a.get('content', ''), 'a')
+                content_a = dedupe_sentences(content_a)
                 out_queue.put(('a', content_a))
                 # brain logging removed
                 if log_file:

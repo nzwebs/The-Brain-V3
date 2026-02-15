@@ -132,6 +132,21 @@ If the `autocorrect` package is installed (default in requirements.txt), replies
 - Real-time chat output
 - Persistent configuration (auto-saved and loaded)
 
+### Model Pull Progress & Testing
+
+- The Settings tab now shows a visual progress bar and a textual status when pulling models via the Ollama `/api/pull` endpoint. A `Cancel Pull` button lets you stop an in-progress pull.
+- Progress information is read from streaming JSON lines returned by the server (look for `percent`, `progress`, or `downloaded/total` fields). When available, the GUI updates the progress bar; otherwise it shows textual status in the model details box.
+- To test the GUI without a real Ollama server, a small test server is included: `test_pull_server.py`. Run it and point an agent URL to `http://localhost:8000`.
+
+Test server example:
+
+```powershell
+python test_pull_server.py
+# then set Agent A URL to http://localhost:8000 in the GUI and click "Pull → Agent A"
+```
+
+If you prefer to browse the test server, open `http://localhost:8000` in your browser — it exposes a tiny form that will POST to `/api/pull` and stream progress lines back to the page.
+
 **All settings are saved on exit and restored on next launch.**
 
 ### Launch the GUI

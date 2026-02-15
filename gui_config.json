@@ -1,8 +1,8 @@
 {
   "a_url": "http://localhost:11434",
   "b_url": "http://192.168.127.121:11434",
-  "a_model": "llama2",
-  "b_model": "llama2",
+  "a_model": "wizard-vicuna-uncensored:13b-q4_0",
+  "b_model": "mdq100/Gemma3-Instruct-Abliterated:12b",
   "a_name": "Ava",
   "b_name": "Orion",
   "a_persona": "",
