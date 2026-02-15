@@ -122,18 +122,12 @@ class OllamaGUI:
         self.a_url.bind('<FocusOut>', lambda e: self._fetch_models(self.a_url.get().strip(), self.a_model, self.a_refresh_btn, self.a_model_status, None))
         self.b_url.bind('<FocusOut>', lambda e: self._fetch_models(self.b_url.get().strip(), self.b_model, self.b_refresh_btn, self.b_model_status, None))
 
-
-    def _apply_theme(self, theme):
-        style = ttk.Style()
-        # Use default theme (vista/win10/clam)
-        try:
-            style.theme_use('vista')
-        except Exception:
-            try:
-                style.theme_use('xpnative')
-            except Exception:
-                style.theme_use('clam')
-        style.configure('.', background='SystemButtonFace', foreground='black')
+        ttk.Label(models_frame, text='A').grid(row=0, column=0, sticky='e')
+        self.a_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
+        self.a_status_dot.grid(row=0, column=1, padx=(6,8))
+        ttk.Label(models_frame, text='B').grid(row=1, column=0, sticky='e')
+        self.b_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
+        self.b_status_dot.grid(row=1, column=1, padx=(6,8))
         style.configure('TLabel', background='SystemButtonFace', foreground='black')
         style.configure('TFrame', background='SystemButtonFace')
         style.configure('TNotebook', background='SystemButtonFace')
@@ -658,50 +652,33 @@ class OllamaGUI:
                     b_vals = list(self.b_model_list.get(0, tk.END))
             except Exception:
                 b_vals = []
-            if hasattr(self, 'a_model_selector'):
-                try:
-                    self.a_model_selector['values'] = a_vals
-                    cur = self.a_model_selector.get()
-                    if cur not in a_vals and a_vals:
-                        self.a_model_selector.set(a_vals[0])
-                    # keep main runtime combobox in sync
+            # Update the main runtime comboboxes in the Chat tab
+            try:
+                if hasattr(self, 'a_model'):
                     try:
-                        if hasattr(self, 'a_model'):
-                            self.a_model.set(self.a_model_selector.get())
+                        self.a_model['values'] = a_vals
+                        cur = self.a_model.get()
+                        if cur not in a_vals and a_vals:
+                            self.a_model.set(a_vals[0])
                     except Exception:
                         pass
-                except Exception:
-                    pass
-            if hasattr(self, 'b_model_selector'):
-                try:
-                    self.b_model_selector['values'] = b_vals
-                    cur = self.b_model_selector.get()
-                    if cur not in b_vals and b_vals:
-                        self.b_model_selector.set(b_vals[0])
+            except Exception:
+                pass
+            try:
+                if hasattr(self, 'b_model'):
                     try:
-                        if hasattr(self, 'b_model'):
-                            self.b_model.set(self.b_model_selector.get())
+                        self.b_model['values'] = b_vals
+                        cur = self.b_model.get()
+                        if cur not in b_vals and b_vals:
+                            self.b_model.set(b_vals[0])
                     except Exception:
                         pass
-                except Exception:
-                    pass
+            except Exception:
+                pass
         except Exception:
             pass
 
-    def _on_chat_selector_change(self, agent):
-        try:
-            if agent == 'a':
-                val = self.a_model_selector.get()
-                if hasattr(self, 'a_model'):
-                    try: self.a_model.set(val)
-                    except Exception: pass
-            elif agent == 'b':
-                val = self.b_model_selector.get()
-                if hasattr(self, 'b_model'):
-                    try: self.b_model.set(val)
-                    except Exception: pass
-        except Exception:
-            pass
+    # Removed _on_chat_selector_change: bottom selectors were duplicate; main comboboxes are authoritative
 
     def _update_models_text(self, agent, models):
         if agent == 'a_settings':
@@ -757,13 +734,13 @@ class OllamaGUI:
                 if hasattr(self, 'a_status_dot'):
                     self._check_server_status(self.a_url.get().strip(), self.a_status_dot)
                     try:
-                        self._check_model_status(self.a_url.get().strip(), self.a_model_selector.get().strip(), self.a_status_dot)
+                        self._check_model_status(self.a_url.get().strip(), self.a_model.get().strip(), self.a_status_dot)
                     except Exception:
                         pass
                 if hasattr(self, 'b_status_dot'):
                     self._check_server_status(self.b_url.get().strip(), self.b_status_dot)
                     try:
-                        self._check_model_status(self.b_url.get().strip(), self.b_model_selector.get().strip(), self.b_status_dot)
+                        self._check_model_status(self.b_url.get().strip(), self.b_model.get().strip(), self.b_status_dot)
                     except Exception:
                         pass
             except Exception:
