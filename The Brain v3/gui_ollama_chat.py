@@ -17,6 +17,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter.scrolledtext import ScrolledText
 from multi_ollama_chat import chat_with_ollama
+import brain
 
 
 DEFAULT_PERSONAS_PATH = os.path.join(os.path.dirname(__file__), 'personas.json')
@@ -258,10 +259,15 @@ class OllamaGUI:
         self.b_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
         self.b_status_dot.grid(row=1, column=2, padx=(0,8))
 
-        # --- Status Bar ---
+        # --- Status Bar with Turn Count ---
         self.status_var = tk.StringVar(value='Ready.')
-        status_bar = ttk.Label(self.chat_tab, textvariable=self.status_var, anchor='w', relief='sunken')
-        status_bar.pack(fill='x', side='bottom', padx=0, pady=(0,0))
+        self.turn_count_var = tk.StringVar(value='')
+        status_frame = ttk.Frame(self.chat_tab)
+        status_frame.pack(fill='x', side='bottom', padx=0, pady=(0,0))
+        status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor='w', relief='sunken')
+        status_label.pack(side='left', fill='x', expand=True)
+        turn_label = ttk.Label(status_frame, textvariable=self.turn_count_var, anchor='e', relief='sunken', width=12)
+        turn_label.pack(side='right')
 
 
     # Model management controls (pull/refresh/remove) moved to Settings tab
@@ -458,6 +464,24 @@ class OllamaGUI:
         self.copy_all_btn = ttk.Button(model_mgmt, text='Copy All', command=self._copy_model_details)
         self.copy_all_btn.grid(row=9, column=1, sticky='e', pady=(2,6))
 
+        # --- Brain Viewer / Wipe ---
+        brain_frame = ttk.LabelFrame(self.settings_tab, text='Brain')
+        brain_frame.pack(fill='both', padx=6, pady=(12,6))
+        self.brain_text = ScrolledText(brain_frame, height=10, wrap='word')
+        self.brain_text.pack(fill='both', expand=True, padx=4, pady=4)
+        btn_frame = ttk.Frame(brain_frame)
+        btn_frame.pack(fill='x', padx=4, pady=(0,6))
+        self.brain_reload_btn = ttk.Button(btn_frame, text='Reload Brain', command=self._load_brain_view)
+        self.brain_reload_btn.pack(side='left')
+        self.brain_wipe_btn = ttk.Button(btn_frame, text='Wipe Brain', command=self._wipe_brain)
+        self.brain_wipe_btn.pack(side='left', padx=(8,0))
+        Tooltip(self.brain_wipe_btn, 'Permanently clear brain.json history (irreversible)')
+        # Load initial brain view
+        try:
+            self._load_brain_view()
+        except Exception:
+            pass
+
     def _get_model_to_pull(self, agent):
         # Returns the model name to pull for the given agent: entry field if non-empty, else selected from list
         if agent == 'a':
@@ -580,6 +604,32 @@ class OllamaGUI:
         except Exception:
             pass
         return ''
+
+    def _load_brain_view(self):
+        try:
+            b = brain.load_brain()
+            pretty = json.dumps(b, indent=2, ensure_ascii=False)
+        except Exception as e:
+            pretty = f'Error loading brain: {e}'
+        try:
+            self.brain_text.config(state='normal')
+            self.brain_text.delete('1.0', 'end')
+            self.brain_text.insert('1.0', pretty)
+            self.brain_text.config(state='disabled')
+        except Exception:
+            pass
+
+    def _wipe_brain(self):
+        if not messagebox.askyesno('Wipe Brain', 'Are you sure you want to permanently wipe brain.json?'):
+            return
+        try:
+            empty = {'history': []}
+            brain.save_brain(empty)
+            self._add_model_status('Brain wiped by user', 'warning')
+            self._load_brain_view()
+            messagebox.showinfo('Wipe Brain', 'brain.json has been wiped.')
+        except Exception as e:
+            messagebox.showerror('Wipe Brain', f'Failed to wipe brain.json: {e}')
 
 
     def _refresh_a_models(self):
@@ -925,8 +975,22 @@ class OllamaGUI:
                     self.chat_text.config(state='disabled')
                 elif kind == 'status':
                     self.status_var.set(formatted)
+                    try:
+                        import re
+                        m = re.search(r'Turn\s*(\d+)\s*/\s*(\d+)', formatted)
+                        if m:
+                            try:
+                                self.turn_count_var.set(f"{m.group(1)}/{m.group(2)}")
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 elif kind == 'done':
                     self.start_btn.config(state='normal'); self.stop_btn.config(state='disabled'); self.status_var.set('Finished.')
+                    try:
+                        self.turn_count_var.set('')
+                    except Exception:
+                        pass
         except queue.Empty:
             pass
         self.root.after(100, self._poll_queue)
@@ -937,6 +1001,11 @@ class OllamaGUI:
         self.chat_text.delete('1.0', 'end')
         self.stop_event.clear()
         self.start_btn.config(state='disabled'); self.stop_btn.config(state='normal'); self.status_var.set('Running...')
+        try:
+            self.turn_count_var.set(f"0/{int(self.turns.get())}")
+        except Exception:
+            try: self.turn_count_var.set('')
+            except Exception: pass
         cfg = {
             'a_url': self.a_url.get().strip(),
             'a_model': self.a_model.get().strip(),
