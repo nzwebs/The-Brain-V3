@@ -1,3 +1,5 @@
+# Smoke tests: [![Smoke tests](https://github.com/nzwebs/The-Brain-V3/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/nzwebs/The-Brain-V3/actions/workflows/smoke-tests.yml)
+
 # Recent Improvements
 
 - Settings tab model management menu rebuilt: now reliable and robust
