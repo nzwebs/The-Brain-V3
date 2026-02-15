@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "E:\The Brain v3\The Brain v3\gui_ollama_chat.py", line 1501, in _run_conversation
+    name_a = (self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A')
+              ~~~~~~~~~~~~~~~^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\tkinter\__init__.py", line 3273, in get
+    return self.tk.call(self._w, 'get')
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+RuntimeError: main thread is not in main loop
+

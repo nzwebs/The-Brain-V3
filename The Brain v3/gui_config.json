@@ -1,8 +1,8 @@
 {
   "a_url": "http://localhost:11434",
   "b_url": "http://192.168.127.121:11434",
-  "a_model": "dolphin-llama3:8b",
-  "b_model": "dolphin-llama3:8b",
+  "a_model": "llama2",
+  "b_model": "llama2",
   "a_name": "Ava",
   "b_name": "Orion",
   "a_persona": "",
