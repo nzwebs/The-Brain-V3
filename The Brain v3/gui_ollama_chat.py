@@ -18,7 +18,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter.scrolledtext import ScrolledText
 from multi_ollama_chat import chat_with_ollama
-import brain
 
 
 DEFAULT_PERSONAS_PATH = os.path.join(os.path.dirname(__file__), 'personas.json')
@@ -57,6 +56,87 @@ class Tooltip:
 class OllamaGUI:
     """Main GUI class for Ollama two-agent chat."""
     def _on_send(self):
+        # If there is text in the user input, use it as the greeting for the conversation.
+        try:
+            txt = self.user_input.get().strip()
+        except Exception:
+            txt = ''
+        # Lightweight debug log to trace why input becomes greeting vs injected
+        try:
+            with open('send_debug.log', 'a', encoding='utf-8') as df:
+                from datetime import datetime
+                df.write(f"[{datetime.now().isoformat()}] _on_send called; txt={repr(txt)}\n")
+        except Exception:
+            pass
+        if txt:
+            # If a conversation is running, send this as an injected user message
+            try:
+                thread_alive = False
+                try:
+                    thread_alive = bool(getattr(self, 'thread', None) and getattr(self, 'thread').is_alive())
+                except Exception:
+                    thread_alive = False
+                try:
+                    with open('send_debug.log', 'a', encoding='utf-8') as df:
+                        from datetime import datetime
+                        df.write(f"[{datetime.now().isoformat()}] thread_alive={thread_alive}\n")
+                except Exception:
+                    pass
+                # If the Start button is disabled, treat the conversation as running (covers race conditions)
+                try:
+                    if not thread_alive and hasattr(self, 'start_btn'):
+                        try:
+                            thread_alive = str(self.start_btn['state']).lower() == 'disabled'
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                if thread_alive:
+                    # ensure inbound queue exists
+                    try:
+                        if not hasattr(self, 'to_worker_queue') or getattr(self, 'to_worker_queue', None) is None:
+                            self.to_worker_queue = queue.Queue()
+                    except Exception:
+                        pass
+                    try:
+                        self.to_worker_queue.put(txt)
+                        try: self.queue.put(('user', txt))
+                        except Exception: pass
+                        try:
+                            with open('send_debug.log', 'a', encoding='utf-8') as df:
+                                from datetime import datetime
+                                df.write(f"[{datetime.now().isoformat()}] action=injected txt={repr(txt)}\n")
+                        except Exception:
+                            pass
+                    except Exception:
+                        try:
+                            with open('send_debug.log', 'a', encoding='utf-8') as df:
+                                from datetime import datetime
+                                df.write(f"[{datetime.now().isoformat()}] action=injected_failed txt={repr(txt)}\n")
+                        except Exception:
+                            pass
+                    try: self.user_input.delete(0, tk.END)
+                    except Exception: pass
+                    return
+            except Exception:
+                pass
+            try:
+                # Start a conversation using this text as the initial greeting/prompt
+                try:
+                    with open('send_debug.log', 'a', encoding='utf-8') as df:
+                        from datetime import datetime
+                        df.write(f"[{datetime.now().isoformat()}] action=start_with_greeting txt={repr(txt)}\n")
+                except Exception:
+                    pass
+                try:
+                    self.start(greeting=txt)
+                except Exception:
+                    self.start()
+            finally:
+                try: self.user_input.delete(0, tk.END)
+                except Exception: pass
+            return
+        # Fallback: just start if no user input
         self.start()
 
     def _on_stop(self):
@@ -259,6 +339,10 @@ class OllamaGUI:
         controls_frame.pack(fill='x', padx=6, pady=(0,6))
         self.user_input = ttk.Entry(controls_frame)
         self.user_input.pack(side='left', fill='x', expand=True, padx=(0,6))
+        try:
+            self.user_input.bind('<Return>', lambda e: self._on_send())
+        except Exception:
+            pass
         self.send_btn = ttk.Button(controls_frame, text='Send', command=self._on_send)
         self.send_btn.pack(side='left')
         self.stop_btn = ttk.Button(controls_frame, text='Stop', command=self._on_stop)
@@ -587,23 +671,7 @@ class OllamaGUI:
         self.copy_all_btn = ttk.Button(model_mgmt, text='Copy All', command=self._copy_model_details)
         self.copy_all_btn.grid(row=9, column=1, sticky='e', pady=(2,6))
 
-        # --- Brain Viewer / Wipe ---
-        brain_frame = ttk.LabelFrame(self.settings_tab, text='Brain')
-        brain_frame.pack(fill='both', padx=6, pady=(12,6))
-        self.brain_text = ScrolledText(brain_frame, height=10, wrap='word')
-        self.brain_text.pack(fill='both', expand=True, padx=4, pady=4)
-        btn_frame = ttk.Frame(brain_frame)
-        btn_frame.pack(fill='x', padx=4, pady=(0,6))
-        self.brain_reload_btn = ttk.Button(btn_frame, text='Reload Brain', command=self._load_brain_view)
-        self.brain_reload_btn.pack(side='left')
-        self.brain_wipe_btn = ttk.Button(btn_frame, text='Wipe Brain', command=self._wipe_brain)
-        self.brain_wipe_btn.pack(side='left', padx=(8,0))
-        Tooltip(self.brain_wipe_btn, 'Permanently clear brain.json history (irreversible)')
-        # Load initial brain view
-        try:
-            self._load_brain_view()
-        except Exception:
-            pass
+        # Brain viewer and storage removed per user request
 
     def _get_model_to_pull(self, agent):
         # Returns the model name to pull for the given agent: entry field if non-empty, else selected from list
@@ -728,31 +796,7 @@ class OllamaGUI:
             pass
         return ''
 
-    def _load_brain_view(self):
-        try:
-            b = brain.load_brain()
-            pretty = json.dumps(b, indent=2, ensure_ascii=False)
-        except Exception as e:
-            pretty = f'Error loading brain: {e}'
-        try:
-            self.brain_text.config(state='normal')
-            self.brain_text.delete('1.0', 'end')
-            self.brain_text.insert('1.0', pretty)
-            self.brain_text.config(state='disabled')
-        except Exception:
-            pass
-
-    def _wipe_brain(self):
-        if not messagebox.askyesno('Wipe Brain', 'Are you sure you want to permanently wipe brain.json?'):
-            return
-        try:
-            empty = {'history': []}
-            brain.save_brain(empty)
-            self._add_model_status('Brain wiped by user', 'warning')
-            self._load_brain_view()
-            messagebox.showinfo('Wipe Brain', 'brain.json has been wiped.')
-        except Exception as e:
-            messagebox.showerror('Wipe Brain', f'Failed to wipe brain.json: {e}')
+    # Brain subsystem removed: load/wipe helpers deleted
 
 
     def _refresh_a_models(self):
@@ -1159,11 +1203,19 @@ class OllamaGUI:
                         self.turn_count_var.set('')
                     except Exception:
                         pass
+                elif kind == 'user':
+                    try:
+                        self.chat_text.config(state='normal')
+                        self.chat_text.insert('end', f"You: {formatted}\n\n")
+                        self.chat_text.see('end')
+                        self.chat_text.config(state='disabled')
+                    except Exception:
+                        pass
         except queue.Empty:
             pass
         self.root.after(100, self._poll_queue)
 
-    def start(self):
+    def start(self, greeting=None):
         if self.thread and self.thread.is_alive():
             return
         self.chat_text.delete('1.0', 'end')
@@ -1192,7 +1244,7 @@ class OllamaGUI:
             'turns': int(self.turns.get()),
             'delay': float(self.delay.get()),
             'humanize': bool(self.humanize_var.get()),
-            'greeting': self.greeting.get().strip() or None,
+            'greeting': (greeting or (self.greeting.get().strip() if hasattr(self, 'greeting') else '') ) or None,
             'max_chars_a': int(self.max_chars_a.get()),
             'max_chars_b': int(self.max_chars_b.get()),
             'short_turn': bool(self.short_turn_var.get()),
@@ -1214,7 +1266,9 @@ class OllamaGUI:
             },
             'b_name': self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B',
         }
-        self.thread = threading.Thread(target=self._run_conversation, args=(cfg, self.stop_event, self.queue), daemon=True)
+        # create an inbound queue for injected user messages during a running conversation
+        self.to_worker_queue = queue.Queue()
+        self.thread = threading.Thread(target=self._run_conversation, args=(cfg, self.stop_event, self.queue, self.to_worker_queue), daemon=True)
         self.thread.start()
 
     def stop(self):
@@ -1611,12 +1665,12 @@ class OllamaGUI:
         try: self.save_config()
         except Exception: pass
 
-    def _run_conversation(self, cfg, stop_event, queue):
+    def _run_conversation(self, cfg, stop_event, out_queue, in_queue=None):
         log_file = None
         try:
             topic = cfg['topic']
             try:
-                queue.put(('status', f"Using topic: {topic}"))
+                out_queue.put(('status', f"Using topic: {topic}"))
             except Exception:
                 pass
             def build_persona(base, age, quirk):
@@ -1641,17 +1695,22 @@ class OllamaGUI:
             messages_a = [{'role': 'system', 'content': sys_a}]
             messages_b = [{'role': 'system', 'content': sys_b}]
 
-            if cfg['humanize']:
-                initial_prompt = cfg['greeting'] or 'Hello, how are you?'
+            # Prefer an explicit greeting passed to start(); otherwise follow the humanize/topic settings
+            if cfg.get('greeting'):
+                initial_prompt = cfg.get('greeting')
+            elif cfg.get('humanize'):
+                initial_prompt = 'Hello, how are you?'
             else:
                 initial_prompt = f"Let's discuss {topic}. I think..."
 
-            queue.put(('b', f"(initial) {initial_prompt}"))
-            messages_b.append({'role': 'user', 'content': initial_prompt})
+            out_queue.put(('b', f"(initial) {initial_prompt}"))
+            # Add the initial user prompt to both agents so they both answer the question
             try:
-                brain.add_to_brain(name_b, initial_prompt, 'user')
+                messages_b.append({'role': 'user', 'content': initial_prompt})
+                messages_a.append({'role': 'user', 'content': initial_prompt})
             except Exception:
                 pass
+            # initial prompt recorded locally (no persistent brain)
 
             turns = cfg['turns']; delay = cfg['delay']
             a_url = cfg['a_url']; b_url = cfg['b_url']
@@ -1690,7 +1749,29 @@ class OllamaGUI:
             for i in range(turns):
                 if stop_event.is_set():
                     break
-                queue.put(('status', f'Turn {i+1}/{turns}'))
+                out_queue.put(('status', f'Turn {i+1}/{turns}'))
+
+                # check for any injected user messages and append them to Agent B's message queue
+                try:
+                    in_q = in_queue if in_queue is not None else None
+                    if in_q is not None:
+                        while True:
+                            um = in_q.get_nowait()
+                            if isinstance(um, str) and um.strip():
+                                # Broadcast injected user message to both agents so both will answer
+                                try:
+                                    messages_b.append({'role': 'user', 'content': um.strip()})
+                                except Exception:
+                                    pass
+                                try:
+                                    messages_a.append({'role': 'user', 'content': um.strip()})
+                                except Exception:
+                                    pass
+                                try: out_queue.put(('user', um.strip()))
+                                except Exception: pass
+                            # continue draining any additional messages
+                except queue.Empty:
+                    pass
 
                 # pass runtime options for Agent B
                 b_runtime = {
@@ -1702,11 +1783,8 @@ class OllamaGUI:
                 }
                 resp_b = self._call_ollama_with_timeout(b_url, b_model, messages_b, runtime_options=b_runtime, timeout=20)
                 content_b = trunc(resp_b.get('content', ''), 'b')
-                queue.put(('b', content_b))
-                try:
-                    brain.add_to_brain(name_b, content_b, 'assistant')
-                except Exception:
-                    pass
+                out_queue.put(('b', content_b))
+                # brain logging removed
                 if log_file:
                     try:
                         log_file.write(f"[{ts()}] B: {content_b}\n"); log_file.flush()
@@ -1727,11 +1805,8 @@ class OllamaGUI:
                 }
                 resp_a = self._call_ollama_with_timeout(a_url, a_model, messages_a, runtime_options=a_runtime, timeout=20)
                 content_a = trunc(resp_a.get('content', ''), 'a')
-                queue.put(('a', content_a))
-                try:
-                    brain.add_to_brain(name_a, content_a, 'assistant')
-                except Exception:
-                    pass
+                out_queue.put(('a', content_a))
+                # brain logging removed
                 if log_file:
                     try:
                         log_file.write(f"[{ts()}] A: {content_a}\n"); log_file.flush()
@@ -1751,15 +1826,18 @@ class OllamaGUI:
                 tb = traceback.format_exc()
                 with open('thread_error.log', 'a', encoding='utf-8') as ef:
                     ef.write(tb + '\n')
-                queue.put(('status', f'Error: {e} (see thread_error.log)'))
+                try: out_queue.put(('status', f'Error: {e} (see thread_error.log)'))
+                except Exception: pass
             except Exception:
-                try: queue.put(('status', f'Error: {e}'))
+                try: out_queue.put(('status', f'Error: {e}'))
                 except Exception: pass
         finally:
             try:
                 if log_file: log_file.close()
             except Exception: pass
-            queue.put(('done', ''))
+            try: out_queue.put(('done', ''))
+            except Exception:
+                pass
 
 
 def main():
