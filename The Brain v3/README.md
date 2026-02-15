@@ -9,6 +9,17 @@
 - Fixed: NameError and widget initialization bugs in Settings tab
 - Fixed: model management actions (pull/remove) always refresh lists and show feedback
 - All fixes validated and working in GUI
+ - Settings tab model management menu rebuilt: now reliable and robust
+ - Model lists always update and display after refresh, pull, or remove
+ - Added persona-file selectors in the Settings tab; selecting a persona file loads its contents into the Chat persona entries
+ - Thread-safety hardening: worker threads (model fetch / conversation) schedule UI updates on the main thread; smoke tests pass
+ - Persistent log/status box: all errors, actions, and progress are visible and copyable
+ - Pull action shows progress and result in log/status and busy indicator
+ - Fixed: blank model lists after refresh (now always show status or models)
+ - Fixed: agent B model refresh hanging (now shows progress and errors)
+ - Fixed: NameError and widget initialization bugs in Settings tab
+ - Fixed: model management actions (pull/remove) always refresh lists and show feedback
+ - All fixes validated and working in GUI
 
 # The Brain v3 — Multi-Ollama Chat
 
@@ -37,6 +48,7 @@ The Brain v3/
 
 - Python 3.10+
 - Ollama server(s) running and accessible at the configured URLs
+ - `requests` is required for model pull/remove actions (added to `requirements.txt`)
 
 ## Installation
 

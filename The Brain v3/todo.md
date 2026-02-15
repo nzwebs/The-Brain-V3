@@ -43,22 +43,50 @@ This file tracks the implementation status and next steps for the GUI + CLI two-
 2. Add credentials store (OS keystore or encrypted file) and cloud sign-in button skeleton
 3. Polish UI status messages and add per-operation progress indicators
 
-## How to Test the GUI
-1. Launch the GUI:
-	```sh
-	python gui_ollama_chat.py
-	```
-2. In "Ollama Settings" click `Refresh List`, select a model, then `Pull Selected → Both` and observe status messages
-3. In Agent panes, tweak temperature / max tokens / top_p / stop and run a short conversation
+# Project TODO — The Brain v3
+
+**Last updated:** 2026-02-15
+
+This file tracks the current status and next steps for the GUI + CLI two-agent Ollama project.
+
+## Completed (recent)
+- Centralized Settings tab with model management and persona presets.
+- Added persona-file selectors in Settings (loads file contents into Chat persona fields).
+- Brain viewer and Wipe Brain action implemented.
+- Live turn count and status updates in the Chat UI.
+- Restored agent name fields (Ava / Orion) and persisted them.
+- Thread-safety hardening: worker threads no longer update Tk widgets directly (uses queue/root.after).
+- Timeout wrapper for Ollama calls to improve Stop responsiveness.
+
+## Current / In Progress
+- Full GUI manual testing and polish (smoke tests passing).
+- Persisting persona-file selections (saved to `gui_config.json`) and loading on startup (done).
+
+## Planned / Backlog
+- Show installed models with metadata/size (requires server support).
+- Add credentials store and cloud sign-in UI (OAuth/token flow).
+- Add more automated tests and CI workflow.
+
+## Next Actions (recommended)
+1. Push recent commits to remote (if desired).
+2. Manual GUI verification: test pulls, model refresh, persona-file loads, and wipe-brain.
+3. Add unit/integration tests for the worker queue and model-fetch logic.
+
+## How to Run Quick Smoke Test
+1. Run the headless smoke test (simulates conversation without network):
+```sh
+python smoke_test.py
+```
+
+2. Or launch the GUI for interactive testing:
+```sh
+python gui_ollama_chat.py
+```
 
 ## File References
-- GUI: gui_ollama_chat.py
-- CLI: multi_ollama_chat.py
-- Personas: personas.json
-
-## Best Practices
-- Always update widgets from the main thread
-- Pass correct widget reference to update functions
+- GUI: `gui_ollama_chat.py`
+- CLI: `multi_ollama_chat.py`
+- Personas: `personas.json`, `persona_ava_prompt.txt`, `persona_orion_prompt.txt`
 
 ---
 End of TODO

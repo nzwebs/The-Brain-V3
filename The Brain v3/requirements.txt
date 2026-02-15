@@ -1,2 +1,3 @@
 ollama
 autocorrect
+requests
