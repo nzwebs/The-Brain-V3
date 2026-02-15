@@ -7,6 +7,7 @@ short-turn truncation, threaded conversation loop, and persistent config.
 """
 
 
+
 import os
 import json
 import time
@@ -1031,6 +1032,34 @@ class OllamaGUI:
                     self.a_preset['values'] = preset_names; self.b_preset['values'] = preset_names
                 except Exception:
                     pass
+            # Load persona file selections if present
+            try:
+                a_pf = cfg.get('a_persona_file','')
+                b_pf = cfg.get('b_persona_file','')
+                if hasattr(self, 'a_persona_file_settings') and a_pf:
+                    try:
+                        self.a_persona_file_settings.set(a_pf)
+                        p = os.path.join(os.path.dirname(__file__), a_pf)
+                        if os.path.exists(p):
+                            with open(p, 'r', encoding='utf-8') as pf:
+                                txt = pf.read().strip()
+                            try: self.a_persona.delete(0, tk.END); self.a_persona.insert(0, txt)
+                            except Exception: pass
+                    except Exception:
+                        pass
+                if hasattr(self, 'b_persona_file_settings') and b_pf:
+                    try:
+                        self.b_persona_file_settings.set(b_pf)
+                        p = os.path.join(os.path.dirname(__file__), b_pf)
+                        if os.path.exists(p):
+                            with open(p, 'r', encoding='utf-8') as pf:
+                                txt = pf.read().strip()
+                            try: self.b_persona.delete(0, tk.END); self.b_persona.insert(0, txt)
+                            except Exception: pass
+                    except Exception:
+                        pass
+            except Exception:
+                pass
             # Pull model management config load removed
             try:
                 ar = cfg.get('a_runtime', {}) or {}
@@ -1150,11 +1179,13 @@ class OllamaGUI:
             'a_name': self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A',
             'a_model': self.a_model.get().strip(),
             'a_persona': self.a_persona.get().strip(),
+            'a_persona_file': self.a_persona_file_settings.get().strip() if hasattr(self, 'a_persona_file_settings') else '',
             'a_age': self.a_age.get().strip(),
             'a_quirk': self.a_quirk.get().strip(),
             'b_url': self.b_url.get().strip(),
             'b_model': self.b_model.get().strip(),
             'b_persona': self.b_persona.get().strip(),
+            'b_persona_file': self.b_persona_file_settings.get().strip() if hasattr(self, 'b_persona_file_settings') else '',
             'b_age': self.b_age.get().strip(),
             'b_quirk': self.b_quirk.get().strip(),
             'topic': self.topic.get().strip(),
@@ -1566,6 +1597,16 @@ class OllamaGUI:
             self.a_preset['values'] = preset_names; self.b_preset['values'] = preset_names
             if preset_names: self.a_preset.set(preset_names[0]); self.b_preset.set(preset_names[0])
         except Exception: pass
+        # clear persona file selections by default
+        try:
+            if hasattr(self, 'a_persona_file_settings'):
+                try: self.a_persona_file_settings.set('')
+                except Exception: pass
+            if hasattr(self, 'b_persona_file_settings'):
+                try: self.b_persona_file_settings.set('')
+                except Exception: pass
+        except Exception:
+            pass
         self.queue.put(('status', 'Defaults restored'))
         try: self.save_config()
         except Exception: pass
