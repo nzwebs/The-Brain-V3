@@ -1382,6 +1382,10 @@ class OllamaGUI:
 
             queue.put(('b', f"(initial) {initial_prompt}"))
             messages_b.append({'role': 'user', 'content': initial_prompt})
+            try:
+                brain.add_to_brain('Agent_B', initial_prompt, 'user')
+            except Exception:
+                pass
 
             turns = cfg['turns']; delay = cfg['delay']
             a_url = cfg['a_url']; b_url = cfg['b_url']
@@ -1433,6 +1437,10 @@ class OllamaGUI:
                 resp_b = chat_with_ollama(b_url, b_model, messages_b, runtime_options=b_runtime)
                 content_b = trunc(resp_b.get('content', ''), 'b')
                 queue.put(('b', content_b))
+                try:
+                    brain.add_to_brain('Agent_B', content_b, 'assistant')
+                except Exception:
+                    pass
                 if log_file:
                     try:
                         log_file.write(f"[{ts()}] B: {content_b}\n"); log_file.flush()
@@ -1454,6 +1462,10 @@ class OllamaGUI:
                 resp_a = chat_with_ollama(a_url, a_model, messages_a, runtime_options=a_runtime)
                 content_a = trunc(resp_a.get('content', ''), 'a')
                 queue.put(('a', content_a))
+                try:
+                    brain.add_to_brain('Agent_A', content_a, 'assistant')
+                except Exception:
+                    pass
                 if log_file:
                     try:
                         log_file.write(f"[{ts()}] A: {content_a}\n"); log_file.flush()
