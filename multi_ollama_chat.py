@@ -19,7 +19,7 @@ except Exception:
 
 try:
     import ollama
-except Exception as e:
+except Exception:
     print(
         "Failed to import 'ollama' package. Install it with 'pip install ollama'",
         file=sys.stderr,
