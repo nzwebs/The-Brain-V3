@@ -1,0 +1,12 @@
+__pycache__/
+.venv/
+*.pyc
+*.pyo
+*.pyd
+*.log
+model_fetch_debug.log
+chat_log.txt
+.DS_Store
+.env
+.idea/
+.vscode/
