@@ -1039,151 +1039,174 @@ class OllamaGUI:
                 cfg = json.load(f)
         except Exception:
             return
-            def s(entry, val):
-                try:
-                    if isinstance(entry, ttk.Entry):
-                        entry.delete(0, tk.END); entry.insert(0, val)
-                    else:
-                        entry.set(val)
-                except Exception:
-                    pass
 
-            s(self.a_url, cfg.get('a_url', self.a_url.get()))
-            s(self.b_url, cfg.get('b_url', self.b_url.get()))
-            s(self.a_model, cfg.get('a_model', self.a_model.get()))
-            s(self.b_model, cfg.get('b_model', self.b_model.get()))
-            s(self.a_persona, cfg.get('a_persona', self.a_persona.get()))
+        def s(entry, val):
             try:
-                s(self.a_name, cfg.get('a_name', self.a_name.get()))
+                if isinstance(entry, ttk.Entry):
+                    entry.delete(0, tk.END); entry.insert(0, val)
+                else:
+                    entry.set(val)
             except Exception:
                 pass
-            s(self.b_persona, cfg.get('b_persona', self.b_persona.get()))
-            s(self.a_age, cfg.get('a_age', self.a_age.get()))
-            s(self.b_age, cfg.get('b_age', self.b_age.get()))
-            s(self.a_quirk, cfg.get('a_quirk', self.a_quirk.get()))
-            s(self.b_quirk, cfg.get('b_quirk', self.b_quirk.get()))
+
+        s(self.a_url, cfg.get('a_url', self.a_url.get()))
+        s(self.b_url, cfg.get('b_url', self.b_url.get()))
+        s(self.a_model, cfg.get('a_model', self.a_model.get()))
+        s(self.b_model, cfg.get('b_model', self.b_model.get()))
+        s(self.a_persona, cfg.get('a_persona', self.a_persona.get()))
+        try:
+            s(self.a_name, cfg.get('a_name', self.a_name.get()))
+        except Exception:
+            pass
+        s(self.b_persona, cfg.get('b_persona', self.b_persona.get()))
+        s(self.a_age, cfg.get('a_age', self.a_age.get()))
+        s(self.b_age, cfg.get('b_age', self.b_age.get()))
+        s(self.a_quirk, cfg.get('a_quirk', self.a_quirk.get()))
+        s(self.b_quirk, cfg.get('b_quirk', self.b_quirk.get()))
+        try:
+            self.topic.delete(0, tk.END); self.topic.insert(0, cfg.get('topic', self.topic.get()))
+        except Exception:
+            pass
+        try:
+            self.turns.set(int(cfg.get('turns', self.turns.get())))
+        except Exception:
+            pass
+        try:
+            self.delay.set(float(cfg.get('delay', self.delay.get())))
+        except Exception:
+            pass
+        try:
+            self.max_chars_a.set(int(cfg.get('max_chars_a', self.max_chars_a.get())))
+        except Exception:
+            pass
+        try:
+            self.max_chars_b.set(int(cfg.get('max_chars_b', self.max_chars_b.get())))
+        except Exception:
+            pass
+        try:
+            self.short_turn_var.set(bool(cfg.get('short_turn', self.short_turn_var.get())))
+        except Exception:
+            pass
+        try:
+            self.log_var.set(bool(cfg.get('log', self.log_var.get())))
+            self.log_path.delete(0, tk.END); self.log_path.insert(0, cfg.get('log_path', self.log_path.get()))
+        except Exception:
+            pass
+        try:
+            self.close_on_exit_var.set(bool(cfg.get('close_on_exit', self.close_on_exit_var.get())))
+        except Exception:
+            pass
+        # load persona presets if present
+        pp = cfg.get('persona_presets')
+        if isinstance(pp, dict):
             try:
-                self.topic.delete(0, tk.END); self.topic.insert(0, cfg.get('topic', self.topic.get()))
+                self.persona_presets = {k: (str(v.get('age','')), v.get('quirk',''), v.get('prompt','')) for k, v in pp.items()}
+                preset_names = list(self.persona_presets.keys())
+                self.a_preset['values'] = preset_names; self.b_preset['values'] = preset_names
             except Exception:
                 pass
-            try:
-                self.turns.set(int(cfg.get('turns', self.turns.get())))
-            except Exception:
-                pass
-            try:
-                self.delay.set(float(cfg.get('delay', self.delay.get())))
-            except Exception:
-                pass
-            try:
-                self.max_chars_a.set(int(cfg.get('max_chars_a', self.max_chars_a.get())))
-            except Exception:
-                pass
-            try:
-                self.max_chars_b.set(int(cfg.get('max_chars_b', self.max_chars_b.get())))
-            except Exception:
-                pass
-            try:
-                self.short_turn_var.set(bool(cfg.get('short_turn', self.short_turn_var.get())))
-            except Exception:
-                pass
-            try:
-                self.log_var.set(bool(cfg.get('log', self.log_var.get())))
-                self.log_path.delete(0, tk.END); self.log_path.insert(0, cfg.get('log_path', self.log_path.get()))
-            except Exception:
-                pass
-            try:
-                self.close_on_exit_var.set(bool(cfg.get('close_on_exit', self.close_on_exit_var.get())))
-            except Exception:
-                pass
-            # load persona presets if present
-            pp = cfg.get('persona_presets')
-            if isinstance(pp, dict):
+        # Load persona file selections if present
+        try:
+            a_pf = cfg.get('a_persona_file','')
+            b_pf = cfg.get('b_persona_file','')
+            if hasattr(self, 'a_persona_file_settings') and a_pf:
                 try:
-                    self.persona_presets = {k: (str(v.get('age','')), v.get('quirk',''), v.get('prompt','')) for k, v in pp.items()}
-                    preset_names = list(self.persona_presets.keys())
-                    self.a_preset['values'] = preset_names; self.b_preset['values'] = preset_names
-                except Exception:
-                    pass
-            # Load persona file selections if present
-            try:
-                a_pf = cfg.get('a_persona_file','')
-                b_pf = cfg.get('b_persona_file','')
-                if hasattr(self, 'a_persona_file_settings') and a_pf:
-                    try:
-                        self.a_persona_file_settings.set(a_pf)
-                        p = os.path.join(os.path.dirname(__file__), a_pf)
-                        if os.path.exists(p):
-                            with open(p, 'r', encoding='utf-8') as pf:
-                                txt = pf.read().strip()
-                            try: self.a_persona.delete(0, tk.END); self.a_persona.insert(0, txt)
-                            except Exception: pass
-                    except Exception:
-                        pass
-                if hasattr(self, 'b_persona_file_settings') and b_pf:
-                    try:
-                        self.b_persona_file_settings.set(b_pf)
-                        p = os.path.join(os.path.dirname(__file__), b_pf)
-                        if os.path.exists(p):
-                            with open(p, 'r', encoding='utf-8') as pf:
-                                txt = pf.read().strip()
-                            try: self.b_persona.delete(0, tk.END); self.b_persona.insert(0, txt)
-                            except Exception: pass
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-            # Load recent URLs if present
-            try:
-                ra = cfg.get('recent_a_urls', []) or []
-                rb = cfg.get('recent_b_urls', []) or []
-                self._recent_urls['a'] = [u for u in ra if isinstance(u, str) and u.strip()]
-                self._recent_urls['b'] = [u for u in rb if isinstance(u, str) and u.strip()]
-                try:
-                    if hasattr(self, 'a_url'):
-                        self.a_url['values'] = self._recent_urls['a']
-                        # set the combobox value to saved a_url if present
-                        try: self.a_url.set(cfg.get('a_url', self.a_url.get()))
+                    self.a_persona_file_settings.set(a_pf)
+                    p = os.path.join(os.path.dirname(__file__), a_pf)
+                    if os.path.exists(p):
+                        with open(p, 'r', encoding='utf-8') as pf:
+                            txt = pf.read().strip()
+                        try: self.a_persona.delete(0, tk.END); self.a_persona.insert(0, txt)
                         except Exception: pass
                 except Exception:
                     pass
+            if hasattr(self, 'b_persona_file_settings') and b_pf:
                 try:
-                    if hasattr(self, 'b_url'):
-                        self.b_url['values'] = self._recent_urls['b']
-                        try: self.b_url.set(cfg.get('b_url', self.b_url.get()))
+                    self.b_persona_file_settings.set(b_pf)
+                    p = os.path.join(os.path.dirname(__file__), b_pf)
+                    if os.path.exists(p):
+                        with open(p, 'r', encoding='utf-8') as pf:
+                            txt = pf.read().strip()
+                        try: self.b_persona.delete(0, tk.END); self.b_persona.insert(0, txt)
                         except Exception: pass
                 except Exception:
                     pass
-            except Exception:
-                pass
-            # Pull model management config load removed
+        except Exception:
+            pass
+        # Load recent URLs if present
+        try:
+            ra = cfg.get('recent_a_urls', []) or []
+            rb = cfg.get('recent_b_urls', []) or []
+            self._recent_urls['a'] = [u for u in ra if isinstance(u, str) and u.strip()]
+            self._recent_urls['b'] = [u for u in rb if isinstance(u, str) and u.strip()]
             try:
-                ar = cfg.get('a_runtime', {}) or {}
-                try: self.a_temp.set(float(ar.get('temperature', self.a_temp.get())))
-                except Exception: pass
-                try: self.a_max_tokens.set(int(ar.get('max_tokens', self.a_max_tokens.get())))
-                except Exception: pass
-                try: self.a_top_p.set(float(ar.get('top_p', self.a_top_p.get())))
-                except Exception: pass
-                try: self.a_stop.delete(0, tk.END); self.a_stop.insert(0, ','.join(ar.get('stop', []) if isinstance(ar.get('stop', []), list) else []))
-                except Exception: pass
-                try: self.a_stream.set(bool(ar.get('stream', self.a_stream.get())))
-                except Exception: pass
+                if hasattr(self, 'a_url'):
+                    self.a_url['values'] = self._recent_urls['a']
+                    # set the combobox value to saved a_url if present
+                    try: self.a_url.set(cfg.get('a_url', self.a_url.get()))
+                    except Exception: pass
             except Exception:
                 pass
             try:
-                br = cfg.get('b_runtime', {}) or {}
-                try: self.b_temp.set(float(br.get('temperature', self.b_temp.get())))
-                except Exception: pass
-                try: self.b_max_tokens.set(int(br.get('max_tokens', self.b_max_tokens.get())))
-                except Exception: pass
-                try: self.b_top_p.set(float(br.get('top_p', self.b_top_p.get())))
-                except Exception: pass
-                try: self.b_stop.delete(0, tk.END); self.b_stop.insert(0, ','.join(br.get('stop', []) if isinstance(br.get('stop', []), list) else []))
-                except Exception: pass
-                try: self.b_stream.set(bool(br.get('stream', self.b_stream.get())))
-                except Exception: pass
+                if hasattr(self, 'b_url'):
+                    self.b_url['values'] = self._recent_urls['b']
+                    try: self.b_url.set(cfg.get('b_url', self.b_url.get()))
+                    except Exception: pass
             except Exception:
                 pass
+        except Exception:
+            pass
+        # Pull model management config load removed
+        try:
+            ar = cfg.get('a_runtime', {}) or {}
+            try:
+                self.a_temp.set(float(ar.get('temperature', self.a_temp.get())))
+            except Exception:
+                pass
+            try:
+                self.a_max_tokens.set(int(ar.get('max_tokens', self.a_max_tokens.get())))
+            except Exception:
+                pass
+            try:
+                self.a_top_p.set(float(ar.get('top_p', self.a_top_p.get())))
+            except Exception:
+                pass
+            try:
+                self.a_stop.delete(0, tk.END)
+                self.a_stop.insert(0, ','.join(ar.get('stop', []) if isinstance(ar.get('stop', []), list) else []))
+            except Exception:
+                pass
+            try:
+                self.a_stream.set(bool(ar.get('stream', self.a_stream.get())))
+            except Exception:
+                pass
+        except Exception:
+            pass
+        try:
+            br = cfg.get('b_runtime', {}) or {}
+            try:
+                self.b_temp.set(float(br.get('temperature', self.b_temp.get())))
+            except Exception:
+                pass
+            try:
+                self.b_max_tokens.set(int(br.get('max_tokens', self.b_max_tokens.get())))
+            except Exception:
+                pass
+            try:
+                self.b_top_p.set(float(br.get('top_p', self.b_top_p.get())))
+            except Exception:
+                pass
+            try:
+                self.b_stop.delete(0, tk.END)
+                self.b_stop.insert(0, ','.join(br.get('stop', []) if isinstance(br.get('stop', []), list) else []))
+            except Exception:
+                pass
+            try:
+                self.b_stream.set(bool(br.get('stream', self.b_stream.get())))
+            except Exception:
+                pass
+        except Exception:
+            pass
         try:
             s(self.b_name, cfg.get('b_name', self.b_name.get()))
         except Exception:

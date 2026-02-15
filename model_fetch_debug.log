@@ -1,0 +1,18 @@
+[2026-02-15T22:25:15.214866] Fetch models debug for http://localhost:11435
+GET http://localhost:11435/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://localhost:11435/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://localhost:11435/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+
+[2026-02-15T22:25:15.307377] Fetch models debug for http://localhost:11435
+GET http://localhost:11435/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://localhost:11435/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://localhost:11435/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+

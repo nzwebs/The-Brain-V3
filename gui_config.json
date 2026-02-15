@@ -3,15 +3,15 @@
   "b_url": "http://192.168.127.121:11434",
   "a_model": "wizard-vicuna-uncensored:13b-q4_0",
   "b_model": "mdq100/Gemma3-Instruct-Abliterated:12b",
-  "a_name": "Ava",
-  "b_name": "Orion",
+  "a_name": "",
+  "b_name": "",
   "a_persona": "",
   "b_persona": "",
-  "a_age": "45",
-  "b_age": "28",
-  "a_quirk": "polite phrasing",
-  "b_quirk": "uses slang",
-  "topic": "the benefits of remote work",
+  "a_age": "",
+  "b_age": "",
+  "a_quirk": "",
+  "b_quirk": "",
+  "topic": "",
   "turns": 10,
   "delay": 1.0,
   "max_chars_a": 120,
@@ -85,5 +85,12 @@
     "top_p": 1.0,
     "stop": [],
     "stream": false
-  }
+  },
+  "recent_a_urls": [
+    "http://localhost:11434"
+  ],
+  "recent_b_urls": [
+    "http://192.168.127.121:11434",
+    "http://localhost:11435"
+  ]
 }
