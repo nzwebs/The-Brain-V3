@@ -1,7 +1,9 @@
-import sys, os, time, threading, queue
+import time
+import threading
+import queue
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), "The Brain v3")))
 import tkinter as tk
+
 import gui_ollama_chat
 
 
