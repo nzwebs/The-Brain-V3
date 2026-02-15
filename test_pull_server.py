@@ -3,16 +3,17 @@ import json
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+
 class Handler(BaseHTTPRequestHandler):
     def _read_body(self):
-        length = int(self.headers.get('Content-Length', 0))
+        length = int(self.headers.get("Content-Length", 0))
         if length:
-            return self.rfile.read(length).decode('utf-8')
-        return ''
+            return self.rfile.read(length).decode("utf-8")
+        return ""
 
         def do_GET(self):
-                # Provide a helpful HTML page when visited in a browser
-                html = '''<!doctype html>
+            # Provide a helpful HTML page when visited in a browser
+            html = """<!doctype html>
 <html><head><meta charset="utf-8"><title>Test Pull Server</title></head>
 <body>
 <h2>Test Pull Server</h2>
@@ -43,54 +44,55 @@ function send(){
 }
 </script>
 </body></html>
-'''
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/html; charset=utf-8')
-                self.send_header('Content-Length', str(len(html.encode('utf-8'))))
-                self.end_headers()
-                self.wfile.write(html.encode('utf-8'))
+"""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(html.encode("utf-8"))))
+            self.end_headers()
+            self.wfile.write(html.encode("utf-8"))
 
     def do_POST(self):
-        if self.path != '/api/pull':
+        if self.path != "/api/pull":
             self.send_response(404)
             self.end_headers()
-            self.wfile.write(b'Not found')
+            self.wfile.write(b"Not found")
             return
         body = self._read_body()
         try:
             data = json.loads(body) if body else {}
         except Exception:
             data = {}
-        model = data.get('name', 'unknown')
+        model = data.get("name", "unknown")
         self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
+        self.send_header("Content-Type", "application/json")
         self.end_headers()
         # Stream a few JSON lines with percent updates
         try:
             for p in range(0, 101, 10):
-                payload = {'status': 'downloading', 'percent': p, 'model': model}
-                line = json.dumps(payload) + '\n'
+                payload = {"status": "downloading", "percent": p, "model": model}
+                line = json.dumps(payload) + "\n"
                 try:
-                    self.wfile.write(line.encode('utf-8'))
+                    self.wfile.write(line.encode("utf-8"))
                     self.wfile.flush()
                 except BrokenPipeError:
                     break
                 time.sleep(0.25)
             # final
-            final = json.dumps({'status': 'finished', 'percent': 100, 'model': model}) + '\n'
+            final = json.dumps({"status": "finished", "percent": 100, "model": model}) + "\n"
             try:
-                self.wfile.write(final.encode('utf-8'))
+                self.wfile.write(final.encode("utf-8"))
                 self.wfile.flush()
             except BrokenPipeError:
                 pass
         except Exception:
             pass
 
-if __name__ == '__main__':
-    server = HTTPServer(('localhost', 8000), Handler)
-    print('Test pull server running on http://localhost:8000 (POST /api/pull)')
+
+if __name__ == "__main__":
+    server = HTTPServer(("localhost", 8000), Handler)
+    print("Test pull server running on http://localhost:8000 (POST /api/pull)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print('Shutting down')
+        print("Shutting down")
         server.server_close()

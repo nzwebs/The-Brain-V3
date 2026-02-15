@@ -6,8 +6,6 @@ Restores the original feature set: per-agent URLs/models, model discovery, perso
 short-turn truncation, threaded conversation loop, and persistent config.
 """
 
-
-
 import os
 import json
 import time
@@ -20,18 +18,19 @@ from tkinter.scrolledtext import ScrolledText
 from multi_ollama_chat import chat_with_ollama
 
 
-DEFAULT_PERSONAS_PATH = os.path.join(os.path.dirname(__file__), 'personas.json')
-DEFAULT_CONFIG = os.path.join(os.path.dirname(__file__), 'gui_config.json')
+DEFAULT_PERSONAS_PATH = os.path.join(os.path.dirname(__file__), "personas.json")
+DEFAULT_CONFIG = os.path.join(os.path.dirname(__file__), "gui_config.json")
 
 
 class Tooltip:
     """Simple tooltip for Tkinter widgets."""
+
     def __init__(self, widget, text):
         self.widget = widget
         self.text = text
         self.tipwindow = None
-        widget.bind('<Enter>', self.show)
-        widget.bind('<Leave>', self.hide)
+        widget.bind("<Enter>", self.show)
+        widget.bind("<Leave>", self.hide)
 
     def show(self, _=None):
         if self.tipwindow:
@@ -41,7 +40,7 @@ class Tooltip:
         self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry(f"+{x}+{y}")
-        lbl = tk.Label(tw, text=self.text, background='#ffffe0', relief='solid', borderwidth=1)
+        lbl = tk.Label(tw, text=self.text, background="#ffffe0", relief="solid", borderwidth=1)
         lbl.pack()
 
     def hide(self, _=None):
@@ -55,16 +54,18 @@ class Tooltip:
 
 class OllamaGUI:
     """Main GUI class for Ollama two-agent chat."""
+
     def _on_send(self):
         # If there is text in the user input, use it as the greeting for the conversation.
         try:
             txt = self.user_input.get().strip()
         except Exception:
-            txt = ''
+            txt = ""
         # Lightweight debug log to trace why input becomes greeting vs injected
         try:
-            with open('send_debug.log', 'a', encoding='utf-8') as df:
+            with open("send_debug.log", "a", encoding="utf-8") as df:
                 from datetime import datetime
+
                 df.write(f"[{datetime.now().isoformat()}] _on_send called; txt={repr(txt)}\n")
         except Exception:
             pass
@@ -73,20 +74,21 @@ class OllamaGUI:
             try:
                 thread_alive = False
                 try:
-                    thread_alive = bool(getattr(self, 'thread', None) and getattr(self, 'thread').is_alive())
+                    thread_alive = bool(getattr(self, "thread", None) and getattr(self, "thread").is_alive())
                 except Exception:
                     thread_alive = False
                 try:
-                    with open('send_debug.log', 'a', encoding='utf-8') as df:
+                    with open("send_debug.log", "a", encoding="utf-8") as df:
                         from datetime import datetime
+
                         df.write(f"[{datetime.now().isoformat()}] thread_alive={thread_alive}\n")
                 except Exception:
                     pass
                 # If the Start button is disabled, treat the conversation as running (covers race conditions)
                 try:
-                    if not thread_alive and hasattr(self, 'start_btn'):
+                    if not thread_alive and hasattr(self, "start_btn"):
                         try:
-                            thread_alive = str(self.start_btn['state']).lower() == 'disabled'
+                            thread_alive = str(self.start_btn["state"]).lower() == "disabled"
                         except Exception:
                             pass
                 except Exception:
@@ -94,37 +96,44 @@ class OllamaGUI:
                 if thread_alive:
                     # ensure inbound queue exists
                     try:
-                        if not hasattr(self, 'to_worker_queue') or getattr(self, 'to_worker_queue', None) is None:
+                        if not hasattr(self, "to_worker_queue") or getattr(self, "to_worker_queue", None) is None:
                             self.to_worker_queue = queue.Queue()
                     except Exception:
                         pass
                     try:
                         self.to_worker_queue.put(txt)
-                        try: self.queue.put(('user', txt))
-                        except Exception: pass
                         try:
-                            with open('send_debug.log', 'a', encoding='utf-8') as df:
+                            self.queue.put(("user", txt))
+                        except Exception:
+                            pass
+                        try:
+                            with open("send_debug.log", "a", encoding="utf-8") as df:
                                 from datetime import datetime
+
                                 df.write(f"[{datetime.now().isoformat()}] action=injected txt={repr(txt)}\n")
                         except Exception:
                             pass
                     except Exception:
                         try:
-                            with open('send_debug.log', 'a', encoding='utf-8') as df:
+                            with open("send_debug.log", "a", encoding="utf-8") as df:
                                 from datetime import datetime
+
                                 df.write(f"[{datetime.now().isoformat()}] action=injected_failed txt={repr(txt)}\n")
                         except Exception:
                             pass
-                    try: self.user_input.delete(0, tk.END)
-                    except Exception: pass
+                    try:
+                        self.user_input.delete(0, tk.END)
+                    except Exception:
+                        pass
                     return
             except Exception:
                 pass
             try:
                 # Start a conversation using this text as the initial greeting/prompt
                 try:
-                    with open('send_debug.log', 'a', encoding='utf-8') as df:
+                    with open("send_debug.log", "a", encoding="utf-8") as df:
                         from datetime import datetime
+
                         df.write(f"[{datetime.now().isoformat()}] action=start_with_greeting txt={repr(txt)}\n")
                 except Exception:
                     pass
@@ -133,8 +142,10 @@ class OllamaGUI:
                 except Exception:
                     self.start()
             finally:
-                try: self.user_input.delete(0, tk.END)
-                except Exception: pass
+                try:
+                    self.user_input.delete(0, tk.END)
+                except Exception:
+                    pass
             return
         # Fallback: just start if no user input
         self.start()
@@ -143,10 +154,10 @@ class OllamaGUI:
         self.stop()
 
     def _clear_chat(self):
-        self.chat_text.config(state='normal')
-        self.chat_text.delete('1.0', 'end')
-        self.chat_text.insert('end', 'Welcome to Ollama Two-Agent Chat!\n')
-        self.chat_text.config(state='disabled')
+        self.chat_text.config(state="normal")
+        self.chat_text.delete("1.0", "end")
+        self.chat_text.insert("end", "Welcome to Ollama Two-Agent Chat!\n")
+        self.chat_text.config(state="disabled")
 
     def _check_model_status(self, url, model, status_label):
         pass
@@ -154,353 +165,500 @@ class OllamaGUI:
     def _check_server_status(self, url, status_label):
         def worker():
             try:
-                req = urllib.request.Request(url.rstrip('/') + '/v1/models')
+                req = urllib.request.Request(url.rstrip("/") + "/v1/models")
                 with urllib.request.urlopen(req, timeout=1) as resp:
                     if resp.status == 200:
                         try:
-                            self.root.after(0, lambda: status_label.config(text='●', foreground='green'))
+                            self.root.after(
+                                0,
+                                lambda: status_label.config(text="●", foreground="green"),
+                            )
                         except Exception:
                             pass
                         return
             except Exception:
                 pass
             try:
-                self.root.after(0, lambda: status_label.config(text='●', foreground='red'))
+                self.root.after(0, lambda: status_label.config(text="●", foreground="red"))
             except Exception:
                 pass
-        threading.Thread(target=worker, daemon=True).start()
 
+        threading.Thread(target=worker, daemon=True).start()
 
     def __init__(self, root):
         self.root = root
-        root.title('Ollama Two-Agent Chat')
+        root.title("Ollama Two-Agent Chat")
         self.queue = queue.Queue()
         # recent urls stored in memory, persisted on save
-        self._recent_urls = {'a': [], 'b': []}
+        self._recent_urls = {"a": [], "b": []}
         # --- Notebook and Tabs ---
         self.notebook = ttk.Notebook(root)
-        self.notebook.pack(fill='both', expand=True)
+        self.notebook.pack(fill="both", expand=True)
         self.chat_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.chat_tab, text='Chat')
+        self.notebook.add(self.chat_tab, text="Chat")
         self.settings_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.settings_tab, text='Settings')
+        self.notebook.add(self.settings_tab, text="Settings")
         # Continue with rest of initialization
         self.thread = None
         self.stop_event = threading.Event()
         self._poll_queue()
-        self._apply_theme('Dark')
+        self._apply_theme("Dark")
         # Immediately poll connectivity after widgets are created
         self.root.after(200, self._poll_connectivity)
-        self._models_info = {'a_settings': {}, 'b_settings': {}}
+        self._models_info = {"a_settings": {}, "b_settings": {}}
         # model refresh will be scheduled after UI widgets are initialized
 
-
     def _auto_select_first_model(self, agent):
-        if agent == 'a':
+        if agent == "a":
             if self.a_model_list.size() > 0:
-                self.a_model_list.selection_clear(0, 'end')
+                self.a_model_list.selection_clear(0, "end")
                 self.a_model_list.selection_set(0)
-                self._show_model_details('a')
-        elif agent == 'b':
+                self._show_model_details("a")
+        elif agent == "b":
             if self.b_model_list.size() > 0:
-                self.b_model_list.selection_clear(0, 'end')
+                self.b_model_list.selection_clear(0, "end")
                 self.b_model_list.selection_set(0)
-                self._show_model_details('b')
+                self._show_model_details("b")
         # Restore model auto-refresh on URL change after widgets are created
 
         # --- Theme Application ---
+
     def _apply_theme(self, theme):
         style = ttk.Style()
         # Use default theme (vista/win10/clam)
         try:
-            style.theme_use('vista')
+            style.theme_use("vista")
         except Exception:
             try:
-                style.theme_use('xpnative')
+                style.theme_use("xpnative")
             except Exception:
-                style.theme_use('clam')
-        style.configure('.', background='SystemButtonFace', foreground='black')
-        style.configure('TLabel', background='SystemButtonFace', foreground='black')
-        style.configure('TFrame', background='SystemButtonFace')
-        style.configure('TNotebook', background='SystemButtonFace')
-        style.configure('TNotebook.Tab', background='SystemButtonFace', foreground='black')
-        style.configure('TEntry', fieldbackground='white', foreground='black')
-        style.configure('TCombobox', fieldbackground='white', foreground='black')
-        style.configure('TButton', background='SystemButtonFace', foreground='black')
+                style.theme_use("clam")
+        style.configure(".", background="SystemButtonFace", foreground="black")
+        style.configure("TLabel", background="SystemButtonFace", foreground="black")
+        style.configure("TFrame", background="SystemButtonFace")
+        style.configure("TNotebook", background="SystemButtonFace")
+        style.configure("TNotebook.Tab", background="SystemButtonFace", foreground="black")
+        style.configure("TEntry", fieldbackground="white", foreground="black")
+        style.configure("TCombobox", fieldbackground="white", foreground="black")
+        style.configure("TButton", background="SystemButtonFace", foreground="black")
 
         # --- Agent Settings ---
 
-        agent_frame = ttk.LabelFrame(self.chat_tab, text='Agent Settings')
-        agent_frame.pack(fill='x', padx=16, pady=(12, 4), anchor='n')
+        agent_frame = ttk.LabelFrame(self.chat_tab, text="Agent Settings")
+        agent_frame.pack(fill="x", padx=16, pady=(12, 4), anchor="n")
 
         # Agent A controls
-        ttk.Label(agent_frame, text='Agent A URL:').grid(row=0, column=0, sticky='w', padx=(0,6), pady=6)
+        ttk.Label(agent_frame, text="Agent A URL:").grid(row=0, column=0, sticky="w", padx=(0, 6), pady=6)
         self.a_url = ttk.Combobox(agent_frame, width=36, values=[])
-        self.a_url.grid(row=0, column=1, sticky='w', pady=6)
+        self.a_url.grid(row=0, column=1, sticky="w", pady=6)
         # Persist URLs when user edits them (focus-out or Enter)
         try:
-            self.a_url.bind('<FocusOut>', lambda e: self.save_config())
-            self.a_url.bind('<Return>', lambda e: self.save_config())
+            self.a_url.bind("<FocusOut>", lambda e: self.save_config())
+            self.a_url.bind("<Return>", lambda e: self.save_config())
         except Exception:
             pass
-        self.a_manage_btn = ttk.Button(agent_frame, text='Manage', width=6, command=lambda: self._manage_urls('a'))
-        self.a_manage_btn.grid(row=0, column=2, sticky='w', padx=(6,0), pady=6)
-        ttk.Label(agent_frame, text='Model:').grid(row=0, column=2, sticky='w', padx=(12,6), pady=6)
+        self.a_manage_btn = ttk.Button(agent_frame, text="Manage", width=6, command=lambda: self._manage_urls("a"))
+        self.a_manage_btn.grid(row=0, column=2, sticky="w", padx=(6, 0), pady=6)
+        ttk.Label(agent_frame, text="Model:").grid(row=0, column=2, sticky="w", padx=(12, 6), pady=6)
         self.a_model = ttk.Combobox(agent_frame, width=24, values=[])
-        self.a_model.grid(row=0, column=3, sticky='w', pady=6)
-        self.a_model_status = ttk.Label(agent_frame, text='●', foreground='gray')
+        self.a_model.grid(row=0, column=3, sticky="w", pady=6)
+        self.a_model_status = ttk.Label(agent_frame, text="●", foreground="gray")
         self.a_model_status.grid(row=0, column=4, padx=6, pady=6)
-        self.a_refresh_btn = ttk.Button(agent_frame, text='↻', width=3, command=lambda: (self.save_config(), self._fetch_models(self.a_url.get().strip(), self.a_model, self.a_refresh_btn, self.a_model_status, None)))
+        self.a_refresh_btn = ttk.Button(
+            agent_frame,
+            text="↻",
+            width=3,
+            command=lambda: (
+                self.save_config(),
+                self._fetch_models(
+                    self.a_url.get().strip(),
+                    self.a_model,
+                    self.a_refresh_btn,
+                    self.a_model_status,
+                    None,
+                ),
+            ),
+        )
         self.a_refresh_btn.grid(row=0, column=5, padx=6, pady=6)
-        ttk.Label(agent_frame, text='Preset:').grid(row=0, column=6, sticky='w', padx=(12,6), pady=6)
+        ttk.Label(agent_frame, text="Preset:").grid(row=0, column=6, sticky="w", padx=(12, 6), pady=6)
         self.a_preset = ttk.Combobox(agent_frame, width=20, values=[])
-        self.a_preset.grid(row=0, column=7, sticky='w', pady=6)
-        self.a_preset.bind('<<ComboboxSelected>>', lambda e: self._apply_preset(self.a_preset.get(), self.a_age, self.a_quirk, self.a_persona))
-        ttk.Label(agent_frame, text='Persona:').grid(row=1, column=0, sticky='w', padx=(0,6), pady=6)
+        self.a_preset.grid(row=0, column=7, sticky="w", pady=6)
+        self.a_preset.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self._apply_preset(self.a_preset.get(), self.a_age, self.a_quirk, self.a_persona),
+        )
+        ttk.Label(agent_frame, text="Persona:").grid(row=1, column=0, sticky="w", padx=(0, 6), pady=6)
         self.a_persona = ttk.Entry(agent_frame, width=36)
-        self.a_persona.grid(row=1, column=1, sticky='w', pady=6)
+        self.a_persona.grid(row=1, column=1, sticky="w", pady=6)
         # persona file selector moved to Settings tab
-        ttk.Label(agent_frame, text='Name:').grid(row=1, column=6, sticky='w', padx=(12,6), pady=6)
+        ttk.Label(agent_frame, text="Name:").grid(row=1, column=6, sticky="w", padx=(12, 6), pady=6)
         self.a_name = ttk.Entry(agent_frame, width=12)
-        self.a_name.grid(row=1, column=7, sticky='w', pady=6)
-        ttk.Label(agent_frame, text='Age:').grid(row=1, column=2, sticky='w', padx=(12,6), pady=6)
+        self.a_name.grid(row=1, column=7, sticky="w", pady=6)
+        ttk.Label(agent_frame, text="Age:").grid(row=1, column=2, sticky="w", padx=(12, 6), pady=6)
         self.a_age = ttk.Entry(agent_frame, width=12)
-        self.a_age.grid(row=1, column=3, sticky='w', pady=6)
-        ttk.Label(agent_frame, text='Quirk:').grid(row=1, column=4, sticky='w', padx=(12,6), pady=6)
+        self.a_age.grid(row=1, column=3, sticky="w", pady=6)
+        ttk.Label(agent_frame, text="Quirk:").grid(row=1, column=4, sticky="w", padx=(12, 6), pady=6)
         # Gather all unique quirks from persona presets and add more
         extra_quirks = [
-            'sarcastic', 'mysterious', 'hyper-logical', 'minimalist', 'storyteller',
-            'humorous', 'cryptic', 'mentor-like', 'philosophical', 'AI expert',
-            'hacker mindset', 'playful', 'visionary', 'skeptical', 'empathetic',
-            'teacherly', 'provocative', 'zen', 'repetitive', 'random', 'detailed'
+            "sarcastic",
+            "mysterious",
+            "hyper-logical",
+            "minimalist",
+            "storyteller",
+            "humorous",
+            "cryptic",
+            "mentor-like",
+            "philosophical",
+            "AI expert",
+            "hacker mindset",
+            "playful",
+            "visionary",
+            "skeptical",
+            "empathetic",
+            "teacherly",
+            "provocative",
+            "zen",
+            "repetitive",
+            "random",
+            "detailed",
         ]
         try:
-            with open(DEFAULT_PERSONAS_PATH, 'r', encoding='utf-8') as f:
+            with open(DEFAULT_PERSONAS_PATH, "r", encoding="utf-8") as f:
                 persona_data = json.load(f)
-            quirks = set(v.get('quirk','') for v in persona_data.values() if v.get('quirk'))
+            quirks = set(v.get("quirk", "") for v in persona_data.values() if v.get("quirk"))
         except Exception:
             quirks = set()
         quirks.update(extra_quirks)
         quirk_list = sorted(q for q in quirks if q)
         self.a_quirk = ttk.Combobox(agent_frame, width=20, values=quirk_list)
-        self.a_quirk.grid(row=1, column=5, sticky='w', pady=6)
-        self.a_quirk.set('')
+        self.a_quirk.grid(row=1, column=5, sticky="w", pady=6)
+        self.a_quirk.set("")
 
         # Agent B controls
-        ttk.Label(agent_frame, text='Agent B URL:').grid(row=2, column=0, sticky='w', padx=(0,6), pady=6)
+        ttk.Label(agent_frame, text="Agent B URL:").grid(row=2, column=0, sticky="w", padx=(0, 6), pady=6)
         self.b_url = ttk.Combobox(agent_frame, width=36, values=[])
-        self.b_url.grid(row=2, column=1, sticky='w', pady=6)
+        self.b_url.grid(row=2, column=1, sticky="w", pady=6)
         try:
-            self.b_url.bind('<FocusOut>', lambda e: self.save_config())
-            self.b_url.bind('<Return>', lambda e: self.save_config())
+            self.b_url.bind("<FocusOut>", lambda e: self.save_config())
+            self.b_url.bind("<Return>", lambda e: self.save_config())
         except Exception:
             pass
-        self.b_manage_btn = ttk.Button(agent_frame, text='Manage', width=6, command=lambda: self._manage_urls('b'))
-        self.b_manage_btn.grid(row=2, column=2, sticky='w', padx=(6,0), pady=6)
-        ttk.Label(agent_frame, text='Model:').grid(row=2, column=2, sticky='w', padx=(12,6), pady=6)
+        self.b_manage_btn = ttk.Button(agent_frame, text="Manage", width=6, command=lambda: self._manage_urls("b"))
+        self.b_manage_btn.grid(row=2, column=2, sticky="w", padx=(6, 0), pady=6)
+        ttk.Label(agent_frame, text="Model:").grid(row=2, column=2, sticky="w", padx=(12, 6), pady=6)
         self.b_model = ttk.Combobox(agent_frame, width=24, values=[])
-        self.b_model.grid(row=2, column=3, sticky='w', pady=6)
-        self.b_model_status = ttk.Label(agent_frame, text='●', foreground='gray')
+        self.b_model.grid(row=2, column=3, sticky="w", pady=6)
+        self.b_model_status = ttk.Label(agent_frame, text="●", foreground="gray")
         self.b_model_status.grid(row=2, column=4, padx=6, pady=6)
-        self.b_refresh_btn = ttk.Button(agent_frame, text='↻', width=3, command=lambda: (self.save_config(), self._fetch_models(self.b_url.get().strip(), self.b_model, self.b_refresh_btn, self.b_model_status, None)))
+        self.b_refresh_btn = ttk.Button(
+            agent_frame,
+            text="↻",
+            width=3,
+            command=lambda: (
+                self.save_config(),
+                self._fetch_models(
+                    self.b_url.get().strip(),
+                    self.b_model,
+                    self.b_refresh_btn,
+                    self.b_model_status,
+                    None,
+                ),
+            ),
+        )
         self.b_refresh_btn.grid(row=2, column=5, padx=6, pady=6)
-        ttk.Label(agent_frame, text='Preset:').grid(row=2, column=6, sticky='w', padx=(12,6), pady=6)
+        ttk.Label(agent_frame, text="Preset:").grid(row=2, column=6, sticky="w", padx=(12, 6), pady=6)
         self.b_preset = ttk.Combobox(agent_frame, width=20, values=[])
-        self.b_preset.grid(row=2, column=7, sticky='w', pady=6)
-        self.b_preset.bind('<<ComboboxSelected>>', lambda e: self._apply_preset(self.b_preset.get(), self.b_age, self.b_quirk, self.b_persona))
-        ttk.Label(agent_frame, text='Persona:').grid(row=3, column=0, sticky='w', padx=(0,6), pady=6)
+        self.b_preset.grid(row=2, column=7, sticky="w", pady=6)
+        self.b_preset.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self._apply_preset(self.b_preset.get(), self.b_age, self.b_quirk, self.b_persona),
+        )
+        ttk.Label(agent_frame, text="Persona:").grid(row=3, column=0, sticky="w", padx=(0, 6), pady=6)
         self.b_persona = ttk.Entry(agent_frame, width=36)
-        self.b_persona.grid(row=3, column=1, sticky='w', pady=6)
+        self.b_persona.grid(row=3, column=1, sticky="w", pady=6)
         # persona file selector moved to Settings tab
-        ttk.Label(agent_frame, text='Name:').grid(row=3, column=6, sticky='w', padx=(12,6), pady=6)
+        ttk.Label(agent_frame, text="Name:").grid(row=3, column=6, sticky="w", padx=(12, 6), pady=6)
         self.b_name = ttk.Entry(agent_frame, width=12)
-        self.b_name.grid(row=3, column=7, sticky='w', pady=6)
-        ttk.Label(agent_frame, text='Age:').grid(row=3, column=2, sticky='w', padx=(12,6), pady=6)
+        self.b_name.grid(row=3, column=7, sticky="w", pady=6)
+        ttk.Label(agent_frame, text="Age:").grid(row=3, column=2, sticky="w", padx=(12, 6), pady=6)
         self.b_age = ttk.Entry(agent_frame, width=12)
-        self.b_age.grid(row=3, column=3, sticky='w', pady=6)
-        ttk.Label(agent_frame, text='Quirk:').grid(row=3, column=4, sticky='w', padx=(12,6), pady=6)
+        self.b_age.grid(row=3, column=3, sticky="w", pady=6)
+        ttk.Label(agent_frame, text="Quirk:").grid(row=3, column=4, sticky="w", padx=(12, 6), pady=6)
         self.b_quirk = ttk.Combobox(agent_frame, width=20, values=quirk_list)
-        self.b_quirk.grid(row=3, column=5, sticky='w', pady=6)
-        self.b_quirk.set('')
-
+        self.b_quirk.grid(row=3, column=5, sticky="w", pady=6)
+        self.b_quirk.set("")
 
         # --- Separator ---
-        ttk.Separator(self.chat_tab, orient='horizontal').pack(fill='x', padx=6, pady=6)
+        ttk.Separator(self.chat_tab, orient="horizontal").pack(fill="x", padx=6, pady=6)
 
         # --- Runtime Options ---
-        runtime_frame = ttk.LabelFrame(self.chat_tab, text='Runtime Options')
-        runtime_frame.pack(fill='x', padx=6, pady=(0,6), anchor='n')
+        runtime_frame = ttk.LabelFrame(self.chat_tab, text="Runtime Options")
+        runtime_frame.pack(fill="x", padx=6, pady=(0, 6), anchor="n")
         # ... (runtime options code remains unchanged) ...
 
         # --- Chat Output ---
         chat_frame = ttk.Frame(self.chat_tab)
-        chat_frame.pack(fill='both', expand=True, padx=6, pady=6)
-        self.chat_text = ScrolledText(chat_frame, wrap='word', height=20, state='normal')
-        self.chat_text.pack(fill='both', expand=True)
-        self.chat_text.insert('end', 'Welcome to Ollama Two-Agent Chat!\n')
-        self.chat_text.config(state='disabled')
+        chat_frame.pack(fill="both", expand=True, padx=6, pady=6)
+        self.chat_text = ScrolledText(chat_frame, wrap="word", height=20, state="normal")
+        self.chat_text.pack(fill="both", expand=True)
+        self.chat_text.insert("end", "Welcome to Ollama Two-Agent Chat!\n")
+        self.chat_text.config(state="disabled")
 
         # --- Chat Controls ---
         controls_frame = ttk.Frame(self.chat_tab)
-        controls_frame.pack(fill='x', padx=6, pady=(0,6))
+        controls_frame.pack(fill="x", padx=6, pady=(0, 6))
         self.user_input = ttk.Entry(controls_frame)
-        self.user_input.pack(side='left', fill='x', expand=True, padx=(0,6))
+        self.user_input.pack(side="left", fill="x", expand=True, padx=(0, 6))
         try:
-            self.user_input.bind('<Return>', lambda e: self._on_send())
+            self.user_input.bind("<Return>", lambda e: self._on_send())
         except Exception:
             pass
-        self.send_btn = ttk.Button(controls_frame, text='Send', command=self._on_send)
-        self.send_btn.pack(side='left')
-        self.stop_btn = ttk.Button(controls_frame, text='Stop', command=self._on_stop)
-        self.stop_btn.pack(side='left', padx=(6,0))
-        self.clear_btn = ttk.Button(controls_frame, text='Clear Chat', command=self._clear_chat)
-        self.clear_btn.pack(side='left', padx=(6,0))
+        self.send_btn = ttk.Button(controls_frame, text="Send", command=self._on_send)
+        self.send_btn.pack(side="left")
+        self.stop_btn = ttk.Button(controls_frame, text="Stop", command=self._on_stop)
+        self.stop_btn.pack(side="left", padx=(6, 0))
+        self.clear_btn = ttk.Button(controls_frame, text="Clear Chat", command=self._clear_chat)
+        self.clear_btn.pack(side="left", padx=(6, 0))
 
         # Chat-tab compact connection indicators (Agent A / Agent B)
         models_frame = ttk.Frame(controls_frame)
-        models_frame.pack(side='right', padx=(6,0))
-        ttk.Label(models_frame, text='A').grid(row=0, column=0, sticky='e')
-        self.a_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
-        self.a_status_dot.grid(row=0, column=1, padx=(6,8))
-        ttk.Label(models_frame, text='B').grid(row=1, column=0, sticky='e')
-        self.b_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
-        self.b_status_dot.grid(row=1, column=1, padx=(6,8))
+        models_frame.pack(side="right", padx=(6, 0))
+        ttk.Label(models_frame, text="A").grid(row=0, column=0, sticky="e")
+        self.a_status_dot = ttk.Label(models_frame, text="●", foreground="gray")
+        self.a_status_dot.grid(row=0, column=1, padx=(6, 8))
+        ttk.Label(models_frame, text="B").grid(row=1, column=0, sticky="e")
+        self.b_status_dot = ttk.Label(models_frame, text="●", foreground="gray")
+        self.b_status_dot.grid(row=1, column=1, padx=(6, 8))
 
         # --- Status Bar with Turn Count ---
-        self.status_var = tk.StringVar(value='Ready.')
-        self.turn_count_var = tk.StringVar(value='')
+        self.status_var = tk.StringVar(value="Ready.")
+        self.turn_count_var = tk.StringVar(value="")
         status_frame = ttk.Frame(self.chat_tab)
-        status_frame.pack(fill='x', side='bottom', padx=0, pady=(0,0))
-        status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor='w', relief='sunken')
-        status_label.pack(side='left', fill='x', expand=True)
-        turn_label = ttk.Label(status_frame, textvariable=self.turn_count_var, anchor='e', relief='sunken', width=12)
-        turn_label.pack(side='right')
+        status_frame.pack(fill="x", side="bottom", padx=0, pady=(0, 0))
+        status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor="w", relief="sunken")
+        status_label.pack(side="left", fill="x", expand=True)
+        turn_label = ttk.Label(
+            status_frame,
+            textvariable=self.turn_count_var,
+            anchor="e",
+            relief="sunken",
+            width=12,
+        )
+        turn_label.pack(side="right")
 
-
-    # Model management controls (pull/refresh/remove) moved to Settings tab
+        # Model management controls (pull/refresh/remove) moved to Settings tab
 
         # Runtime controls (temperature, max tokens, top_p, stop, stream)
-        runtime_frame = ttk.LabelFrame(self.chat_tab, text='Runtime Options')
-        runtime_frame.pack(fill='x', padx=6, pady=(0,6))
+        runtime_frame = ttk.LabelFrame(self.chat_tab, text="Runtime Options")
+        runtime_frame.pack(fill="x", padx=6, pady=(0, 6))
         # --- Agent A runtime options with tooltips ---
-        a_temp_label = ttk.Label(runtime_frame, text='A Temp:')
-        a_temp_label.grid(row=0, column=0, sticky='w')
+        a_temp_label = ttk.Label(runtime_frame, text="A Temp:")
+        a_temp_label.grid(row=0, column=0, sticky="w")
         self.a_temp = tk.DoubleVar(value=0.7)
-        a_temp_spin = ttk.Spinbox(runtime_frame, from_=0.0, to=2.0, increment=0.01, textvariable=self.a_temp, width=6)
+        a_temp_spin = ttk.Spinbox(
+            runtime_frame,
+            from_=0.0,
+            to=2.0,
+            increment=0.01,
+            textvariable=self.a_temp,
+            width=6,
+        )
         a_temp_spin.grid(row=0, column=1)
-        Tooltip(a_temp_label, 'Temperature: Controls randomness. Higher values = more creative, lower = more focused.')
-        Tooltip(a_temp_spin, 'Temperature: Controls randomness. Higher values = more creative, lower = more focused.')
+        Tooltip(
+            a_temp_label,
+            "Temperature: Controls randomness. Higher values = more creative, lower = more focused.",
+        )
+        Tooltip(
+            a_temp_spin,
+            "Temperature: Controls randomness. Higher values = more creative, lower = more focused.",
+        )
 
-        a_max_tokens_label = ttk.Label(runtime_frame, text='A Max Tokens:')
-        a_max_tokens_label.grid(row=0, column=2, sticky='w')
+        a_max_tokens_label = ttk.Label(runtime_frame, text="A Max Tokens:")
+        a_max_tokens_label.grid(row=0, column=2, sticky="w")
         self.a_max_tokens = tk.IntVar(value=512)
         a_max_tokens_spin = ttk.Spinbox(runtime_frame, from_=1, to=4096, textvariable=self.a_max_tokens, width=7)
         a_max_tokens_spin.grid(row=0, column=3)
-        Tooltip(a_max_tokens_label, 'Max Tokens: Maximum number of tokens (words/pieces) the model can generate in a response.')
-        Tooltip(a_max_tokens_spin, 'Max Tokens: Maximum number of tokens (words/pieces) the model can generate in a response.')
+        Tooltip(
+            a_max_tokens_label,
+            "Max Tokens: Maximum number of tokens (words/pieces) the model can generate in a response.",
+        )
+        Tooltip(
+            a_max_tokens_spin,
+            "Max Tokens: Maximum number of tokens (words/pieces) the model can generate in a response.",
+        )
 
-        a_top_p_label = ttk.Label(runtime_frame, text='A Top-p:')
-        a_top_p_label.grid(row=0, column=4, sticky='w')
+        a_top_p_label = ttk.Label(runtime_frame, text="A Top-p:")
+        a_top_p_label.grid(row=0, column=4, sticky="w")
         self.a_top_p = tk.DoubleVar(value=1.0)
-        a_top_p_spin = ttk.Spinbox(runtime_frame, from_=0.0, to=1.0, increment=0.01, textvariable=self.a_top_p, width=6)
+        a_top_p_spin = ttk.Spinbox(
+            runtime_frame,
+            from_=0.0,
+            to=1.0,
+            increment=0.01,
+            textvariable=self.a_top_p,
+            width=6,
+        )
         a_top_p_spin.grid(row=0, column=5)
-        Tooltip(a_top_p_label, 'Top-p: Nucleus sampling. Lower values = more focused, higher = more random.')
-        Tooltip(a_top_p_spin, 'Top-p: Nucleus sampling. Lower values = more focused, higher = more random.')
+        Tooltip(
+            a_top_p_label,
+            "Top-p: Nucleus sampling. Lower values = more focused, higher = more random.",
+        )
+        Tooltip(
+            a_top_p_spin,
+            "Top-p: Nucleus sampling. Lower values = more focused, higher = more random.",
+        )
 
-        a_stop_label = ttk.Label(runtime_frame, text='A Stop:')
-        a_stop_label.grid(row=0, column=6, sticky='w')
+        a_stop_label = ttk.Label(runtime_frame, text="A Stop:")
+        a_stop_label.grid(row=0, column=6, sticky="w")
         self.a_stop = ttk.Entry(runtime_frame, width=12)
         self.a_stop.grid(row=0, column=7)
-        Tooltip(a_stop_label, 'Stop: Comma-separated list of tokens. Model will stop generating if any are produced.')
-        Tooltip(self.a_stop, 'Stop: Comma-separated list of tokens. Model will stop generating if any are produced.')
+        Tooltip(
+            a_stop_label,
+            "Stop: Comma-separated list of tokens. Model will stop generating if any are produced.",
+        )
+        Tooltip(
+            self.a_stop,
+            "Stop: Comma-separated list of tokens. Model will stop generating if any are produced.",
+        )
 
         self.a_stream = tk.BooleanVar(value=False)
-        a_stream_btn = ttk.Checkbutton(runtime_frame, text='A Stream', variable=self.a_stream)
+        a_stream_btn = ttk.Checkbutton(runtime_frame, text="A Stream", variable=self.a_stream)
         a_stream_btn.grid(row=0, column=8, padx=4)
-        Tooltip(a_stream_btn, 'Stream: If enabled, model output appears as it is generated (faster feedback).')
+        Tooltip(
+            a_stream_btn,
+            "Stream: If enabled, model output appears as it is generated (faster feedback).",
+        )
 
         # --- Agent B runtime options with tooltips ---
-        b_temp_label = ttk.Label(runtime_frame, text='B Temp:')
-        b_temp_label.grid(row=1, column=0, sticky='w')
+        b_temp_label = ttk.Label(runtime_frame, text="B Temp:")
+        b_temp_label.grid(row=1, column=0, sticky="w")
         self.b_temp = tk.DoubleVar(value=0.7)
-        b_temp_spin = ttk.Spinbox(runtime_frame, from_=0.0, to=2.0, increment=0.01, textvariable=self.b_temp, width=6)
+        b_temp_spin = ttk.Spinbox(
+            runtime_frame,
+            from_=0.0,
+            to=2.0,
+            increment=0.01,
+            textvariable=self.b_temp,
+            width=6,
+        )
         b_temp_spin.grid(row=1, column=1)
-        Tooltip(b_temp_label, 'Temperature: Controls randomness. Higher values = more creative, lower = more focused.')
-        Tooltip(b_temp_spin, 'Temperature: Controls randomness. Higher values = more creative, lower = more focused.')
+        Tooltip(
+            b_temp_label,
+            "Temperature: Controls randomness. Higher values = more creative, lower = more focused.",
+        )
+        Tooltip(
+            b_temp_spin,
+            "Temperature: Controls randomness. Higher values = more creative, lower = more focused.",
+        )
 
-        b_max_tokens_label = ttk.Label(runtime_frame, text='B Max Tokens:')
-        b_max_tokens_label.grid(row=1, column=2, sticky='w')
+        b_max_tokens_label = ttk.Label(runtime_frame, text="B Max Tokens:")
+        b_max_tokens_label.grid(row=1, column=2, sticky="w")
         self.b_max_tokens = tk.IntVar(value=512)
         b_max_tokens_spin = ttk.Spinbox(runtime_frame, from_=1, to=4096, textvariable=self.b_max_tokens, width=7)
         b_max_tokens_spin.grid(row=1, column=3)
-        Tooltip(b_max_tokens_label, 'Max Tokens: Maximum number of tokens (words/pieces) the model can generate in a response.')
-        Tooltip(b_max_tokens_spin, 'Max Tokens: Maximum number of tokens (words/pieces) the model can generate in a response.')
+        Tooltip(
+            b_max_tokens_label,
+            "Max Tokens: Maximum number of tokens (words/pieces) the model can generate in a response.",
+        )
+        Tooltip(
+            b_max_tokens_spin,
+            "Max Tokens: Maximum number of tokens (words/pieces) the model can generate in a response.",
+        )
 
-        b_top_p_label = ttk.Label(runtime_frame, text='B Top-p:')
-        b_top_p_label.grid(row=1, column=4, sticky='w')
+        b_top_p_label = ttk.Label(runtime_frame, text="B Top-p:")
+        b_top_p_label.grid(row=1, column=4, sticky="w")
         self.b_top_p = tk.DoubleVar(value=1.0)
-        b_top_p_spin = ttk.Spinbox(runtime_frame, from_=0.0, to=1.0, increment=0.01, textvariable=self.b_top_p, width=6)
+        b_top_p_spin = ttk.Spinbox(
+            runtime_frame,
+            from_=0.0,
+            to=1.0,
+            increment=0.01,
+            textvariable=self.b_top_p,
+            width=6,
+        )
         b_top_p_spin.grid(row=1, column=5)
-        Tooltip(b_top_p_label, 'Top-p: Nucleus sampling. Lower values = more focused, higher = more random.')
-        Tooltip(b_top_p_spin, 'Top-p: Nucleus sampling. Lower values = more focused, higher = more random.')
+        Tooltip(
+            b_top_p_label,
+            "Top-p: Nucleus sampling. Lower values = more focused, higher = more random.",
+        )
+        Tooltip(
+            b_top_p_spin,
+            "Top-p: Nucleus sampling. Lower values = more focused, higher = more random.",
+        )
 
-        b_stop_label = ttk.Label(runtime_frame, text='B Stop:')
-        b_stop_label.grid(row=1, column=6, sticky='w')
+        b_stop_label = ttk.Label(runtime_frame, text="B Stop:")
+        b_stop_label.grid(row=1, column=6, sticky="w")
         self.b_stop = ttk.Entry(runtime_frame, width=12)
         self.b_stop.grid(row=1, column=7)
-        Tooltip(b_stop_label, 'Stop: Comma-separated list of tokens. Model will stop generating if any are produced.')
-        Tooltip(self.b_stop, 'Stop: Comma-separated list of tokens. Model will stop generating if any are produced.')
+        Tooltip(
+            b_stop_label,
+            "Stop: Comma-separated list of tokens. Model will stop generating if any are produced.",
+        )
+        Tooltip(
+            self.b_stop,
+            "Stop: Comma-separated list of tokens. Model will stop generating if any are produced.",
+        )
 
         self.b_stream = tk.BooleanVar(value=False)
-        b_stream_btn = ttk.Checkbutton(runtime_frame, text='B Stream', variable=self.b_stream)
+        b_stream_btn = ttk.Checkbutton(runtime_frame, text="B Stream", variable=self.b_stream)
         b_stream_btn.grid(row=1, column=8, padx=4)
-        Tooltip(b_stream_btn, 'Stream: If enabled, model output appears as it is generated (faster feedback).')
+        Tooltip(
+            b_stream_btn,
+            "Stream: If enabled, model output appears as it is generated (faster feedback).",
+        )
 
         ctrl_frame = ttk.Frame(self.chat_tab)
-        ctrl_frame.pack(fill='x', padx=6, pady=(0,6))
-        ttk.Label(ctrl_frame, text='Topic').grid(row=0, column=0, sticky='w')
+        ctrl_frame.pack(fill="x", padx=6, pady=(0, 6))
+        ttk.Label(ctrl_frame, text="Topic").grid(row=0, column=0, sticky="w")
         self.topic = ttk.Entry(ctrl_frame, width=40)
-        self.topic.insert(0, 'the benefits of remote work')
-        self.topic.grid(row=0, column=1, sticky='w')
-        self.clear_topic_btn = ttk.Button(ctrl_frame, text='Clear Topic', command=lambda: self.topic.delete(0, 'end'))
-        self.clear_topic_btn.grid(row=0, column=1, sticky='e', padx=(0, 2))
-        ttk.Label(ctrl_frame, text='Turns').grid(row=0, column=2, sticky='w')
+        self.topic.insert(0, "the benefits of remote work")
+        self.topic.grid(row=0, column=1, sticky="w")
+        self.clear_topic_btn = ttk.Button(ctrl_frame, text="Clear Topic", command=lambda: self.topic.delete(0, "end"))
+        self.clear_topic_btn.grid(row=0, column=1, sticky="e", padx=(0, 2))
+        ttk.Label(ctrl_frame, text="Turns").grid(row=0, column=2, sticky="w")
         self.turns = tk.IntVar(value=10)
         ttk.Spinbox(ctrl_frame, from_=1, to=1000, textvariable=self.turns, width=5).grid(row=0, column=3)
-        ttk.Label(ctrl_frame, text='Delay(s)').grid(row=0, column=4, sticky='w')
+        ttk.Label(ctrl_frame, text="Delay(s)").grid(row=0, column=4, sticky="w")
         self.delay = tk.DoubleVar(value=1.0)
-        ttk.Spinbox(ctrl_frame, from_=0.0, to=60.0, increment=0.1, textvariable=self.delay, width=6).grid(row=0, column=5)
+        ttk.Spinbox(
+            ctrl_frame,
+            from_=0.0,
+            to=60.0,
+            increment=0.1,
+            textvariable=self.delay,
+            width=6,
+        ).grid(row=0, column=5)
         self.humanize_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(ctrl_frame, text='Humanize', variable=self.humanize_var).grid(row=0, column=6, padx=6)
-        ttk.Label(ctrl_frame, text='Greeting').grid(row=1, column=0, sticky='w')
+        ttk.Checkbutton(ctrl_frame, text="Humanize", variable=self.humanize_var).grid(row=0, column=6, padx=6)
+        ttk.Label(ctrl_frame, text="Greeting").grid(row=1, column=0, sticky="w")
         self.greeting = ttk.Entry(ctrl_frame, width=40)
-        self.greeting.grid(row=1, column=1, sticky='w')
-        ttk.Label(ctrl_frame, text='Max chars A').grid(row=1, column=2, sticky='w')
+        self.greeting.grid(row=1, column=1, sticky="w")
+        ttk.Label(ctrl_frame, text="Max chars A").grid(row=1, column=2, sticky="w")
         self.max_chars_a = tk.IntVar(value=120)
         ttk.Spinbox(ctrl_frame, from_=0, to=10000, textvariable=self.max_chars_a, width=7).grid(row=1, column=3)
         # Place Max chars B on the same line as Max chars A
-        ttk.Label(ctrl_frame, text='Max chars B').grid(row=1, column=4, sticky='w')
+        ttk.Label(ctrl_frame, text="Max chars B").grid(row=1, column=4, sticky="w")
         self.max_chars_b = tk.IntVar(value=120)
         ttk.Spinbox(ctrl_frame, from_=0, to=10000, textvariable=self.max_chars_b, width=7).grid(row=1, column=5)
         # Move short-turn and log options to the next row to avoid overlap
         self.short_turn_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(ctrl_frame, text='Short-turn', variable=self.short_turn_var).grid(row=2, column=2, padx=6)
+        ttk.Checkbutton(ctrl_frame, text="Short-turn", variable=self.short_turn_var).grid(row=2, column=2, padx=6)
         self.log_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(ctrl_frame, text='Log to file', variable=self.log_var).grid(row=2, column=3, padx=6)
+        ttk.Checkbutton(ctrl_frame, text="Log to file", variable=self.log_var).grid(row=2, column=3, padx=6)
         self.log_path = ttk.Entry(ctrl_frame, width=30)
-        self.log_path.insert(0, '')
-        self.log_path.grid(row=2, column=4, sticky='w')
+        self.log_path.insert(0, "")
+        self.log_path.grid(row=2, column=4, sticky="w")
         self.close_on_exit_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(ctrl_frame, text='Close terminal on exit', variable=self.close_on_exit_var).grid(row=2, column=5, padx=6)
+        ttk.Checkbutton(ctrl_frame, text="Close terminal on exit", variable=self.close_on_exit_var).grid(row=2, column=5, padx=6)
         # Place run controls grouped to the right of the same row as max chars
-        self.start_btn = ttk.Button(ctrl_frame, text='Start', command=self.start)
+        self.start_btn = ttk.Button(ctrl_frame, text="Start", command=self.start)
         self.start_btn.grid(row=1, column=6, padx=6)
-        self.stop_btn = ttk.Button(ctrl_frame, text='Stop', command=self.stop, state='disabled')
+        self.stop_btn = ttk.Button(ctrl_frame, text="Stop", command=self.stop, state="disabled")
         self.stop_btn.grid(row=1, column=7, padx=6)
-        self.reset_btn = ttk.Button(ctrl_frame, text='Reset Defaults', command=self.reset_defaults)
+        self.reset_btn = ttk.Button(ctrl_frame, text="Reset Defaults", command=self.reset_defaults)
         self.reset_btn.grid(row=1, column=8, padx=6)
         # Save & Exit button
-        self.save_exit_btn = ttk.Button(ctrl_frame, text='Save && Exit', command=self._save_and_exit)
+        self.save_exit_btn = ttk.Button(ctrl_frame, text="Save && Exit", command=self._save_and_exit)
         self.save_exit_btn.grid(row=2, column=8, padx=6)
 
         self._model_status_log = []
@@ -516,15 +674,19 @@ class OllamaGUI:
             self.load_personas()
             preset_names = list(self.persona_presets.keys())
             try:
-                if hasattr(self, 'a_preset'):
-                    self.a_preset['values'] = preset_names
-                if hasattr(self, 'b_preset'):
-                    self.b_preset['values'] = preset_names
+                if hasattr(self, "a_preset"):
+                    self.a_preset["values"] = preset_names
+                if hasattr(self, "b_preset"):
+                    self.b_preset["values"] = preset_names
                 if preset_names:
-                    try: self.a_preset.set(preset_names[0])
-                    except Exception: pass
-                    try: self.b_preset.set(preset_names[0])
-                    except Exception: pass
+                    try:
+                        self.a_preset.set(preset_names[0])
+                    except Exception:
+                        pass
+                    try:
+                        self.b_preset.set(preset_names[0])
+                    except Exception:
+                        pass
             except Exception:
                 pass
         except Exception:
@@ -535,83 +697,149 @@ class OllamaGUI:
         for widget in self.settings_tab.winfo_children():
             widget.destroy()
         st = ttk.Frame(self.settings_tab)
-        st.pack(fill='both', expand=True, padx=12, pady=12)
-        ttk.Label(st, text='Chat Output Formatting:').grid(row=0, column=0, sticky='w', padx=6, pady=4)
-        self.formatting_var = tk.StringVar(value='plain')
+        st.pack(fill="both", expand=True, padx=12, pady=12)
+        ttk.Label(st, text="Chat Output Formatting:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+        self.formatting_var = tk.StringVar(value="plain")
         formatting_options = [
-            ('plain', 'Plain Text: No formatting, just text.'),
-            ('markdown', 'Markdown: Supports *bold*, _italic_, code, lists, and more.'),
-            ('raw', 'Raw Model Output: Shows exactly what the model returns.'),
+            ("plain", "Plain Text: No formatting, just text."),
+            ("markdown", "Markdown: Supports *bold*, _italic_, code, lists, and more."),
+            ("raw", "Raw Model Output: Shows exactly what the model returns."),
         ]
         row = 1
         for val, desc in formatting_options:
             rb = ttk.Radiobutton(st, text=val.capitalize(), variable=self.formatting_var, value=val)
-            rb.grid(row=row, column=0, sticky='w', padx=12)
-            ttk.Label(st, text=desc, wraplength=400, foreground='#555').grid(row=row, column=1, sticky='w', padx=4)
+            rb.grid(row=row, column=0, sticky="w", padx=12)
+            ttk.Label(st, text=desc, wraplength=400, foreground="#555").grid(row=row, column=1, sticky="w", padx=4)
             row += 1
 
         # --- Persona Presets (moved here previously) ---
-        persona_frame = ttk.LabelFrame(self.settings_tab, text='Personas')
-        persona_frame.pack(fill='x', padx=6, pady=(12,6))
-        ttk.Label(persona_frame, text='Persona controls are available in the Chat tab.').grid(row=0, column=0, sticky='w', padx=4, pady=4)
+        persona_frame = ttk.LabelFrame(self.settings_tab, text="Personas")
+        persona_frame.pack(fill="x", padx=6, pady=(12, 6))
+        ttk.Label(persona_frame, text="Persona controls are available in the Chat tab.").grid(row=0, column=0, sticky="w", padx=4, pady=4)
 
-        model_mgmt = ttk.LabelFrame(self.settings_tab, text='Model Management')
-        model_mgmt.pack(fill='x', padx=6, pady=(12,6))
+        model_mgmt = ttk.LabelFrame(self.settings_tab, text="Model Management")
+        model_mgmt.pack(fill="x", padx=6, pady=(12, 6))
 
-        self.model_busy_var = tk.StringVar(value='')
-        self.model_busy_label = ttk.Label(model_mgmt, textvariable=self.model_busy_var, foreground='blue')
-        self.model_busy_label.grid(row=0, column=0, columnspan=2, sticky='w', pady=(0,4))
+        self.model_busy_var = tk.StringVar(value="")
+        self.model_busy_label = ttk.Label(model_mgmt, textvariable=self.model_busy_var, foreground="blue")
+        self.model_busy_label.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
 
-        ttk.Label(model_mgmt, text='Agent A Models:').grid(row=1, column=0, sticky='w')
+        ttk.Label(model_mgmt, text="Agent A Models:").grid(row=1, column=0, sticky="w")
         self.a_model_list = tk.Listbox(model_mgmt, width=32, height=6)
-        self.a_model_list.grid(row=2, column=0, sticky='w', padx=2)
-        self.a_model_list.bind('<<ListboxSelect>>', lambda e: self._show_model_details('a'))
+        self.a_model_list.grid(row=2, column=0, sticky="w", padx=2)
+        self.a_model_list.bind("<<ListboxSelect>>", lambda e: self._show_model_details("a"))
         self.a_model_entry = ttk.Entry(model_mgmt, width=30)
-        self.a_model_entry.grid(row=3, column=0, sticky='w', padx=2, pady=(2,0))
-        self.a_model_entry.insert(0, '')
-        self.refresh_a_btn = ttk.Button(model_mgmt, text='Refresh A', command=lambda: (self.save_config(), self._fetch_models(self.a_url.get().strip(), self.a_model, self.refresh_a_btn, self.a_model_status, None, agent='a_settings')))
-        self.refresh_a_btn.grid(row=4, column=0, sticky='w', padx=2, pady=2)
-        self.pull_a_btn = ttk.Button(model_mgmt, text='Pull → Agent A', command=lambda: self._pull_to_urls([self.a_url.get().strip()], self._get_model_to_pull('a')))
+        self.a_model_entry.grid(row=3, column=0, sticky="w", padx=2, pady=(2, 0))
+        self.a_model_entry.insert(0, "")
+        self.refresh_a_btn = ttk.Button(
+            model_mgmt,
+            text="Refresh A",
+            command=lambda: (
+                self.save_config(),
+                self._fetch_models(
+                    self.a_url.get().strip(),
+                    self.a_model,
+                    self.refresh_a_btn,
+                    self.a_model_status,
+                    None,
+                    agent="a_settings",
+                ),
+            ),
+        )
+        self.refresh_a_btn.grid(row=4, column=0, sticky="w", padx=2, pady=2)
+        self.pull_a_btn = ttk.Button(
+            model_mgmt,
+            text="Pull → Agent A",
+            command=lambda: self._pull_to_urls([self.a_url.get().strip()], self._get_model_to_pull("a")),
+        )
         self.pull_a_btn.grid(row=5, column=0, padx=4, pady=2)
-        self.remove_a_btn = ttk.Button(model_mgmt, text='Remove from A', command=lambda: self._remove_model(self.a_url.get().strip(), self._get_selected_model(self.a_model_list)))
+        self.remove_a_btn = ttk.Button(
+            model_mgmt,
+            text="Remove from A",
+            command=lambda: self._remove_model(self.a_url.get().strip(), self._get_selected_model(self.a_model_list)),
+        )
         self.remove_a_btn.grid(row=6, column=0, padx=4, pady=2)
 
-        ttk.Label(model_mgmt, text='Agent B Models:').grid(row=1, column=1, sticky='w')
+        ttk.Label(model_mgmt, text="Agent B Models:").grid(row=1, column=1, sticky="w")
         self.b_model_list = tk.Listbox(model_mgmt, width=32, height=6)
-        self.b_model_list.grid(row=2, column=1, sticky='w', padx=2)
-        self.b_model_list.bind('<<ListboxSelect>>', lambda e: self._show_model_details('b'))
+        self.b_model_list.grid(row=2, column=1, sticky="w", padx=2)
+        self.b_model_list.bind("<<ListboxSelect>>", lambda e: self._show_model_details("b"))
         self.b_model_entry = ttk.Entry(model_mgmt, width=30)
-        self.b_model_entry.grid(row=3, column=1, sticky='w', padx=2, pady=(2,0))
-        self.b_model_entry.insert(0, '')
-        self.refresh_b_btn = ttk.Button(model_mgmt, text='Refresh B', command=lambda: (self.save_config(), self._fetch_models(self.b_url.get().strip(), self.b_model, self.refresh_b_btn, self.b_model_status, None, agent='b_settings')))
-        self.refresh_b_btn.grid(row=4, column=1, sticky='w', padx=2, pady=2)
-        self.pull_b_btn = ttk.Button(model_mgmt, text='Pull → Agent B', command=lambda: self._pull_to_urls([self.b_url.get().strip()], self._get_model_to_pull('b')))
+        self.b_model_entry.grid(row=3, column=1, sticky="w", padx=2, pady=(2, 0))
+        self.b_model_entry.insert(0, "")
+        self.refresh_b_btn = ttk.Button(
+            model_mgmt,
+            text="Refresh B",
+            command=lambda: (
+                self.save_config(),
+                self._fetch_models(
+                    self.b_url.get().strip(),
+                    self.b_model,
+                    self.refresh_b_btn,
+                    self.b_model_status,
+                    None,
+                    agent="b_settings",
+                ),
+            ),
+        )
+        self.refresh_b_btn.grid(row=4, column=1, sticky="w", padx=2, pady=2)
+        self.pull_b_btn = ttk.Button(
+            model_mgmt,
+            text="Pull → Agent B",
+            command=lambda: self._pull_to_urls([self.b_url.get().strip()], self._get_model_to_pull("b")),
+        )
         self.pull_b_btn.grid(row=5, column=1, padx=4, pady=2)
-        self.remove_b_btn = ttk.Button(model_mgmt, text='Remove from B', command=lambda: self._remove_model(self.b_url.get().strip(), self._get_selected_model(self.b_model_list)))
+        self.remove_b_btn = ttk.Button(
+            model_mgmt,
+            text="Remove from B",
+            command=lambda: self._remove_model(self.b_url.get().strip(), self._get_selected_model(self.b_model_list)),
+        )
         self.remove_b_btn.grid(row=6, column=1, padx=4, pady=2)
 
-        self.pull_both_btn = ttk.Button(model_mgmt, text='Pull → Both', command=lambda: self._pull_to_urls([self.a_url.get().strip(), self.b_url.get().strip()], self._get_model_to_pull('both')))
+        self.pull_both_btn = ttk.Button(
+            model_mgmt,
+            text="Pull → Both",
+            command=lambda: self._pull_to_urls(
+                [self.a_url.get().strip(), self.b_url.get().strip()],
+                self._get_model_to_pull("both"),
+            ),
+        )
         self.pull_both_btn.grid(row=7, column=0, columnspan=2, padx=4, pady=2)
 
-        self.model_details_text = tk.Text(model_mgmt, height=6, width=70, wrap='word', foreground='#222', background='#f8f8ff', borderwidth=1, relief='solid', cursor='xterm')
-        self.model_details_text.grid(row=8, column=0, columnspan=2, sticky='we', pady=(8,2))
-        self.model_details_text.config(state='normal')
-        self.model_details_text.bind('<1>', lambda e: self.model_details_text.focus_set())
-        self.model_details_text.tag_configure('error', foreground='red')
-        self.model_details_text.tag_configure('warning', foreground='orange')
-        self.model_details_text.tag_configure('info', foreground='#222')
-        self.copy_all_btn = ttk.Button(model_mgmt, text='Copy All', command=self._copy_model_details)
-        self.copy_all_btn.grid(row=11, column=1, sticky='e', pady=(2,6))
+        self.model_details_text = tk.Text(
+            model_mgmt,
+            height=6,
+            width=70,
+            wrap="word",
+            foreground="#222",
+            background="#f8f8ff",
+            borderwidth=1,
+            relief="solid",
+            cursor="xterm",
+        )
+        self.model_details_text.grid(row=8, column=0, columnspan=2, sticky="we", pady=(8, 2))
+        self.model_details_text.config(state="normal")
+        self.model_details_text.bind("<1>", lambda e: self.model_details_text.focus_set())
+        self.model_details_text.tag_configure("error", foreground="red")
+        self.model_details_text.tag_configure("warning", foreground="orange")
+        self.model_details_text.tag_configure("info", foreground="#222")
+        self.copy_all_btn = ttk.Button(model_mgmt, text="Copy All", command=self._copy_model_details)
+        self.copy_all_btn.grid(row=11, column=1, sticky="e", pady=(2, 6))
 
         # Pull progress widgets
         try:
-            self.pull_progress = ttk.Progressbar(model_mgmt, length=360, mode='determinate', maximum=100)
-            self.pull_progress.grid(row=9, column=0, columnspan=2, sticky='w', pady=(4,2))
-            self.pull_progress_label = ttk.Label(model_mgmt, text='')
-            self.pull_progress_label.grid(row=10, column=0, sticky='w')
+            self.pull_progress = ttk.Progressbar(model_mgmt, length=360, mode="determinate", maximum=100)
+            self.pull_progress.grid(row=9, column=0, columnspan=2, sticky="w", pady=(4, 2))
+            self.pull_progress_label = ttk.Label(model_mgmt, text="")
+            self.pull_progress_label.grid(row=10, column=0, sticky="w")
             self.cancel_pull_var = tk.BooleanVar(value=False)
-            self.cancel_pull_btn = ttk.Button(model_mgmt, text='Cancel Pull', command=lambda: self.cancel_pull_var.set(True), state='disabled')
-            self.cancel_pull_btn.grid(row=10, column=1, sticky='e', padx=4)
+            self.cancel_pull_btn = ttk.Button(
+                model_mgmt,
+                text="Cancel Pull",
+                command=lambda: self.cancel_pull_var.set(True),
+                state="disabled",
+            )
+            self.cancel_pull_btn.grid(row=10, column=1, sticky="e", padx=4)
         except Exception:
             self.pull_progress = None
             self.pull_progress_label = None
@@ -622,17 +850,17 @@ class OllamaGUI:
 
     def _get_model_to_pull(self, agent):
         # Returns the model name to pull for the given agent: entry field if non-empty, else selected from list
-        if agent == 'a':
+        if agent == "a":
             name = self.a_model_entry.get().strip()
             if name:
                 return name
             return self._get_selected_model(self.a_model_list)
-        elif agent == 'b':
+        elif agent == "b":
             name = self.b_model_entry.get().strip()
             if name:
                 return name
             return self._get_selected_model(self.b_model_list)
-        elif agent == 'both':
+        elif agent == "both":
             # Prefer Agent A entry, then B, then selected from either list
             name = self.a_model_entry.get().strip()
             if name:
@@ -642,21 +870,22 @@ class OllamaGUI:
                 return name
             return self._get_selected_model(self.a_model_list) or self._get_selected_model(self.b_model_list)
         return None
+
     def _show_model_details(self, agent):
         # Always show both model details and the persistent log
         model = None
-        if agent == 'a':
+        if agent == "a":
             sel = self.a_model_list.curselection()
             if sel:
                 model = self.a_model_list.get(sel[0])
-        elif agent == 'b':
+        elif agent == "b":
             sel = self.b_model_list.curselection()
             if sel:
                 model = self.b_model_list.get(sel[0])
-        details = ''
+        details = ""
         if model:
             info = None
-            if hasattr(self, '_models_info') and agent in self._models_info:
+            if hasattr(self, "_models_info") and agent in self._models_info:
                 info = self._models_info[agent].get(model)
             if info:
                 details = f"Model: {model}\n"
@@ -668,22 +897,22 @@ class OllamaGUI:
         self._update_model_details_box(details)
 
     def _update_model_details_box(self, details=None):
-        self.model_details_text.config(state='normal')
-        self.model_details_text.delete('1.0', 'end')
+        self.model_details_text.config(state="normal")
+        self.model_details_text.delete("1.0", "end")
         # Always show model details for current selection
         if details is None:
             # Try to get current selection from A or B
             model = None
             agent = None
             if self.a_model_list.curselection():
-                agent = 'a'
+                agent = "a"
                 model = self.a_model_list.get(self.a_model_list.curselection()[0])
             elif self.b_model_list.curselection():
-                agent = 'b'
+                agent = "b"
                 model = self.b_model_list.get(self.b_model_list.curselection()[0])
             if model:
                 info = None
-                if hasattr(self, '_models_info') and agent in self._models_info:
+                if hasattr(self, "_models_info") and agent in self._models_info:
                     info = self._models_info[agent].get(model)
                 if info:
                     details = f"Model: {model}\n"
@@ -693,20 +922,21 @@ class OllamaGUI:
                 else:
                     details = f"Model: {model}"
             else:
-                details = ''
+                details = ""
         if details:
-            self.model_details_text.insert('end', details + '\n', 'info')
-            self.model_details_text.insert('end', '-'*60 + '\n', 'info')
+            self.model_details_text.insert("end", details + "\n", "info")
+            self.model_details_text.insert("end", "-" * 60 + "\n", "info")
         # Show status/error log (last 20)
         for ts, msg, level in self._model_status_log[-20:]:
-            tag = level if level in ('error','warning','info') else 'info'
-            self.model_details_text.insert('end', f'[{ts}] {msg}\n', tag)
-        self.model_details_text.see('end')
-        self.model_details_text.config(state='normal')
+            tag = level if level in ("error", "warning", "info") else "info"
+            self.model_details_text.insert("end", f"[{ts}] {msg}\n", tag)
+        self.model_details_text.see("end")
+        self.model_details_text.config(state="normal")
 
-    def _add_model_status(self, msg, level='info'):
+    def _add_model_status(self, msg, level="info"):
         import datetime
-        ts = datetime.datetime.now().strftime('%H:%M:%S')
+
+        ts = datetime.datetime.now().strftime("%H:%M:%S")
         self._model_status_log.append((ts, msg, level))
         # Only keep last 50 messages
         if len(self._model_status_log) > 50:
@@ -716,7 +946,7 @@ class OllamaGUI:
     def _copy_model_details(self):
         self.model_details_text.focus_set()
         self.root.clipboard_clear()
-        text = self.model_details_text.get('1.0', 'end').strip()
+        text = self.model_details_text.get("1.0", "end").strip()
         self.root.clipboard_append(text)
 
     def _add_recent_url(self, agent, url):
@@ -733,10 +963,10 @@ class OllamaGUI:
             lst = lst[:10]
             self._recent_urls[agent] = lst
             try:
-                if agent == 'a' and hasattr(self, 'a_url'):
-                    self.a_url['values'] = lst
-                if agent == 'b' and hasattr(self, 'b_url'):
-                    self.b_url['values'] = lst
+                if agent == "a" and hasattr(self, "a_url"):
+                    self.a_url["values"] = lst
+                if agent == "b" and hasattr(self, "b_url"):
+                    self.b_url["values"] = lst
             except Exception:
                 pass
         except Exception:
@@ -745,29 +975,31 @@ class OllamaGUI:
     def _manage_urls(self, agent):
         try:
             top = tk.Toplevel(self.root)
-            top.title('Manage Recent URLs')
-            top.geometry('480x300')
-            lbl = ttk.Label(top, text=f'Recent URLs for Agent {agent.upper()}')
-            lbl.pack(anchor='w', padx=8, pady=(8,2))
+            top.title("Manage Recent URLs")
+            top.geometry("480x300")
+            lbl = ttk.Label(top, text=f"Recent URLs for Agent {agent.upper()}")
+            lbl.pack(anchor="w", padx=8, pady=(8, 2))
             lb = tk.Listbox(top)
-            lb.pack(fill='both', expand=True, padx=8, pady=4)
-            for u in (self._recent_urls.get(agent, []) or []):
+            lb.pack(fill="both", expand=True, padx=8, pady=4)
+            for u in self._recent_urls.get(agent, []) or []:
                 lb.insert(tk.END, u)
             btn_frame = ttk.Frame(top)
-            btn_frame.pack(fill='x', padx=8, pady=8)
+            btn_frame.pack(fill="x", padx=8, pady=8)
+
             def remove_selected():
                 try:
                     sel = lb.curselection()
                     if not sel:
                         return
                     idx = sel[0]
-                    val = lb.get(idx)
                     lb.delete(idx)
                     lst = list(lb.get(0, tk.END))
                     self._recent_urls[agent] = lst
                     try:
-                        if agent == 'a': self.a_url['values'] = lst
-                        else: self.b_url['values'] = lst
+                        if agent == "a":
+                            self.a_url["values"] = lst
+                        else:
+                            self.b_url["values"] = lst
                     except Exception:
                         pass
                     try:
@@ -776,15 +1008,17 @@ class OllamaGUI:
                         pass
                 except Exception:
                     pass
+
             def close():
                 try:
                     top.destroy()
                 except Exception:
                     pass
-            rem_btn = ttk.Button(btn_frame, text='Remove Selected', command=remove_selected)
-            rem_btn.pack(side='left')
-            close_btn = ttk.Button(btn_frame, text='Close', command=close)
-            close_btn.pack(side='right')
+
+            rem_btn = ttk.Button(btn_frame, text="Remove Selected", command=remove_selected)
+            rem_btn.pack(side="left")
+            close_btn = ttk.Button(btn_frame, text="Close", command=close)
+            close_btn.pack(side="right")
         except Exception:
             pass
 
@@ -793,14 +1027,14 @@ class OllamaGUI:
         self.model_busy_label.update_idletasks()
 
     def _clear_model_busy(self):
-        self.model_busy_var.set('')
+        self.model_busy_var.set("")
         self.model_busy_label.update_idletasks()
 
     def _save_and_exit(self):
         try:
             self.save_config()
         except Exception as e:
-            messagebox.showerror('Save Error', f'Failed to save config: {e}')
+            messagebox.showerror("Save Error", f"Failed to save config: {e}")
         self.root.quit()
 
     def _get_selected_model(self, listbox):
@@ -810,18 +1044,37 @@ class OllamaGUI:
                 return listbox.get(selection[0])
         except Exception:
             pass
-        return ''
+        return ""
 
     # Brain subsystem removed: load/wipe helpers deleted
 
-
     def _refresh_a_models(self):
-        self._set_model_busy('Refreshing Agent A models...')
-        self.root.after(100, lambda: self._fetch_models(self.a_url.get().strip(), self.a_model, self.refresh_a_btn, self.a_model_status, None, agent='a_settings'))
+        self._set_model_busy("Refreshing Agent A models...")
+        self.root.after(
+            100,
+            lambda: self._fetch_models(
+                self.a_url.get().strip(),
+                self.a_model,
+                self.refresh_a_btn,
+                self.a_model_status,
+                None,
+                agent="a_settings",
+            ),
+        )
 
     def _refresh_b_models(self):
-        self._set_model_busy('Refreshing Agent B models...')
-        self.root.after(100, lambda: self._fetch_models(self.b_url.get().strip(), self.b_model, self.refresh_b_btn, self.b_model_status, None, agent='b_settings'))
+        self._set_model_busy("Refreshing Agent B models...")
+        self.root.after(
+            100,
+            lambda: self._fetch_models(
+                self.b_url.get().strip(),
+                self.b_model,
+                self.refresh_b_btn,
+                self.b_model_status,
+                None,
+                agent="b_settings",
+            ),
+        )
 
     def _refresh_chat_tab_model_selectors(self):
         """Synchronize the Chat-tab comboboxes with the Settings tab model lists."""
@@ -829,20 +1082,20 @@ class OllamaGUI:
             a_vals = []
             b_vals = []
             try:
-                if hasattr(self, 'a_model_list'):
+                if hasattr(self, "a_model_list"):
                     a_vals = list(self.a_model_list.get(0, tk.END))
             except Exception:
                 a_vals = []
             try:
-                if hasattr(self, 'b_model_list'):
+                if hasattr(self, "b_model_list"):
                     b_vals = list(self.b_model_list.get(0, tk.END))
             except Exception:
                 b_vals = []
             # Update the main runtime comboboxes in the Chat tab
             try:
-                if hasattr(self, 'a_model'):
+                if hasattr(self, "a_model"):
                     try:
-                        self.a_model['values'] = a_vals
+                        self.a_model["values"] = a_vals
                         cur = self.a_model.get()
                         if cur not in a_vals and a_vals:
                             self.a_model.set(a_vals[0])
@@ -851,9 +1104,9 @@ class OllamaGUI:
             except Exception:
                 pass
             try:
-                if hasattr(self, 'b_model'):
+                if hasattr(self, "b_model"):
                     try:
-                        self.b_model['values'] = b_vals
+                        self.b_model["values"] = b_vals
                         cur = self.b_model.get()
                         if cur not in b_vals and b_vals:
                             self.b_model.set(b_vals[0])
@@ -867,33 +1120,34 @@ class OllamaGUI:
     # Removed _on_chat_selector_change: bottom selectors were duplicate; main comboboxes are authoritative
 
     def _update_models_text(self, agent, models):
-        if agent == 'a_settings':
+        if agent == "a_settings":
             self.a_model_list.delete(0, tk.END)
             if models:
                 for m in models:
                     self.a_model_list.insert(tk.END, m)
             else:
-                self.a_model_list.insert(tk.END, '(No models found or fetch failed)')
+                self.a_model_list.insert(tk.END, "(No models found or fetch failed)")
             # Auto-select and show details for first model after refresh
-            self._auto_select_first_model('a')
-        elif agent == 'b_settings':
+            self._auto_select_first_model("a")
+        elif agent == "b_settings":
             self.b_model_list.delete(0, tk.END)
             if models:
                 for m in models:
                     self.b_model_list.insert(tk.END, m)
             else:
-                self.b_model_list.insert(tk.END, '(No models found or fetch failed)')
-            self._auto_select_first_model('b')
+                self.b_model_list.insert(tk.END, "(No models found or fetch failed)")
+            self._auto_select_first_model("b")
         # No-op for 'a' and 'b' agents as a_models_text and b_models_text widgets are not defined
         # Also refresh the Chat-tab model selectors if present
         try:
-            if hasattr(self, '_refresh_chat_tab_model_selectors'):
+            if hasattr(self, "_refresh_chat_tab_model_selectors"):
                 try:
                     self._refresh_chat_tab_model_selectors()
                 except Exception:
                     pass
         except Exception:
             pass
+
     # Patch _fetch_models to also fetch model details if available
     # (This is a minimal patch, as the main fetch logic is in worker)
     # To support model details, we need to parse details if present in the response
@@ -907,26 +1161,41 @@ class OllamaGUI:
     #   - On model select, call _show_model_details(agent)
     #   - On fetch/refresh, show busy indicator
 
-
     def _poll_connectivity(self):
         # Poll server and model status every 2 seconds
         try:
             self._check_server_status(self.a_url.get().strip(), self.a_model_status)
             self._check_server_status(self.b_url.get().strip(), self.b_model_status)
-            self._check_model_status(self.a_url.get().strip(), self.a_model.get().strip(), self.a_model_status)
-            self._check_model_status(self.b_url.get().strip(), self.b_model.get().strip(), self.b_model_status)
+            self._check_model_status(
+                self.a_url.get().strip(),
+                self.a_model.get().strip(),
+                self.a_model_status,
+            )
+            self._check_model_status(
+                self.b_url.get().strip(),
+                self.b_model.get().strip(),
+                self.b_model_status,
+            )
             # Also update the Chat-tab indicators (if present)
             try:
-                if hasattr(self, 'a_status_dot'):
+                if hasattr(self, "a_status_dot"):
                     self._check_server_status(self.a_url.get().strip(), self.a_status_dot)
                     try:
-                        self._check_model_status(self.a_url.get().strip(), self.a_model.get().strip(), self.a_status_dot)
+                        self._check_model_status(
+                            self.a_url.get().strip(),
+                            self.a_model.get().strip(),
+                            self.a_status_dot,
+                        )
                     except Exception:
                         pass
-                if hasattr(self, 'b_status_dot'):
+                if hasattr(self, "b_status_dot"):
                     self._check_server_status(self.b_url.get().strip(), self.b_status_dot)
                     try:
-                        self._check_model_status(self.b_url.get().strip(), self.b_model.get().strip(), self.b_status_dot)
+                        self._check_model_status(
+                            self.b_url.get().strip(),
+                            self.b_model.get().strip(),
+                            self.b_status_dot,
+                        )
                     except Exception:
                         pass
             except Exception:
@@ -939,15 +1208,16 @@ class OllamaGUI:
     def _call_ollama_with_timeout(self, client_url, model, messages, runtime_options=None, timeout=20):
         """Call chat_with_ollama in a thread and return its result or a timeout error."""
         result = {}
+
         def worker():
             try:
                 res = chat_with_ollama(client_url, model, messages, runtime_options=runtime_options)
             except Exception as e:
                 res = {"content": f"[ERROR calling {client_url}: {e}]"}
             try:
-                result['res'] = res
+                result["res"] = res
             except Exception:
-                result['res'] = {"content": "[ERROR]"}
+                result["res"] = {"content": "[ERROR]"}
 
         t = threading.Thread(target=worker, daemon=True)
         t.start()
@@ -955,7 +1225,7 @@ class OllamaGUI:
         if t.is_alive():
             # Thread still running — return a timeout placeholder and leave the worker to finish in background
             return {"content": f"[ERROR: timeout after {timeout}s contacting {client_url}]"}
-        return result.get('res', {"content": "[ERROR: no response]"})
+        return result.get("res", {"content": "[ERROR: no response]"})
 
     def load_personas(self, path=DEFAULT_PERSONAS_PATH):
         if not os.path.exists(path):
@@ -963,70 +1233,78 @@ class OllamaGUI:
             self.persona_presets = {}
             return
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             out = {}
             for name, v in data.items():
                 if isinstance(v, dict):
-                    out[name] = (str(v.get('age', '')), v.get('quirk', ''), v.get('prompt', ''))
+                    out[name] = (
+                        str(v.get("age", "")),
+                        v.get("quirk", ""),
+                        v.get("prompt", ""),
+                    )
             self.persona_presets = out
         except Exception:
             self.persona_presets = {}
 
     def save_config(self, path=DEFAULT_CONFIG):
         cfg = {
-            'a_url': self.a_url.get().strip(),
-            'b_url': self.b_url.get().strip(),
-            'a_model': self.a_model.get().strip(),
-            'b_model': self.b_model.get().strip(),
-            'a_name': self.a_name.get().strip(),
-            'b_name': self.b_name.get().strip(),
-            'a_persona': self.a_persona.get().strip(),
-            'b_persona': self.b_persona.get().strip(),
-            'a_age': self.a_age.get().strip(),
-            'b_age': self.b_age.get().strip(),
-            'a_quirk': self.a_quirk.get().strip(),
-            'b_quirk': self.b_quirk.get().strip(),
-            'topic': self.topic.get().strip(),
-            'turns': int(self.turns.get()),
-            'delay': float(self.delay.get()),
-            'max_chars_a': int(self.max_chars_a.get()),
-            'max_chars_b': int(self.max_chars_b.get()),
-            'short_turn': bool(self.short_turn_var.get()),
-            'log': bool(self.log_var.get()),
-            'log_path': self.log_path.get().strip(),
-            'close_on_exit': bool(self.close_on_exit_var.get()),
+            "a_url": self.a_url.get().strip(),
+            "b_url": self.b_url.get().strip(),
+            "a_model": self.a_model.get().strip(),
+            "b_model": self.b_model.get().strip(),
+            "a_name": self.a_name.get().strip(),
+            "b_name": self.b_name.get().strip(),
+            "a_persona": self.a_persona.get().strip(),
+            "b_persona": self.b_persona.get().strip(),
+            "a_age": self.a_age.get().strip(),
+            "b_age": self.b_age.get().strip(),
+            "a_quirk": self.a_quirk.get().strip(),
+            "b_quirk": self.b_quirk.get().strip(),
+            "topic": self.topic.get().strip(),
+            "turns": int(self.turns.get()),
+            "delay": float(self.delay.get()),
+            "max_chars_a": int(self.max_chars_a.get()),
+            "max_chars_b": int(self.max_chars_b.get()),
+            "short_turn": bool(self.short_turn_var.get()),
+            "log": bool(self.log_var.get()),
+            "log_path": self.log_path.get().strip(),
+            "close_on_exit": bool(self.close_on_exit_var.get()),
             # Pull model management config removed
-            'persona_presets': {k: {'age': v[0], 'quirk': v[1], 'prompt': v[2]} for k, v in self.persona_presets.items()},
-            'a_runtime': {
-                'temperature': float(self.a_temp.get()),
-                'max_tokens': int(self.a_max_tokens.get()),
-                'top_p': float(self.a_top_p.get()),
-                'stop': [s.strip() for s in self.a_stop.get().split(',') if s.strip()],
-                'stream': bool(self.a_stream.get()),
+            "persona_presets": {k: {"age": v[0], "quirk": v[1], "prompt": v[2]} for k, v in self.persona_presets.items()},
+            "a_runtime": {
+                "temperature": float(self.a_temp.get()),
+                "max_tokens": int(self.a_max_tokens.get()),
+                "top_p": float(self.a_top_p.get()),
+                "stop": [s.strip() for s in self.a_stop.get().split(",") if s.strip()],
+                "stream": bool(self.a_stream.get()),
             },
-            'b_runtime': {
-                'temperature': float(self.b_temp.get()),
-                'max_tokens': int(self.b_max_tokens.get()),
-                'top_p': float(self.b_top_p.get()),
-                'stop': [s.strip() for s in self.b_stop.get().split(',') if s.strip()],
-                'stream': bool(self.b_stream.get()),
+            "b_runtime": {
+                "temperature": float(self.b_temp.get()),
+                "max_tokens": int(self.b_max_tokens.get()),
+                "top_p": float(self.b_top_p.get()),
+                "stop": [s.strip() for s in self.b_stop.get().split(",") if s.strip()],
+                "stream": bool(self.b_stream.get()),
             },
         }
         try:
             # update recent URL lists before saving
             try:
-                aurl = cfg.get('a_url','').strip()
-                burl = cfg.get('b_url','').strip()
-                try: self._add_recent_url('a', aurl)
-                except Exception: pass
-                try: self._add_recent_url('b', burl)
-                except Exception: pass
-                cfg['recent_a_urls'] = list(self._recent_urls.get('a', []))
-                cfg['recent_b_urls'] = list(self._recent_urls.get('b', []))
+                aurl = cfg.get("a_url", "").strip()
+                burl = cfg.get("b_url", "").strip()
+                try:
+                    self._add_recent_url("a", aurl)
+                except Exception:
+                    pass
+                try:
+                    self._add_recent_url("b", burl)
+                except Exception:
+                    pass
+                cfg["recent_a_urls"] = list(self._recent_urls.get("a", []))
+                cfg["recent_b_urls"] = list(self._recent_urls.get("b", []))
             except Exception:
                 pass
-            with open(path, 'w', encoding='utf-8') as f:
+            with open(path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, indent=2)
         except Exception:
             pass
@@ -1035,7 +1313,7 @@ class OllamaGUI:
         if not os.path.exists(path):
             return
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
         except Exception:
             return
@@ -1043,172 +1321,192 @@ class OllamaGUI:
         def s(entry, val):
             try:
                 if isinstance(entry, ttk.Entry):
-                    entry.delete(0, tk.END); entry.insert(0, val)
+                    entry.delete(0, tk.END)
+                    entry.insert(0, val)
                 else:
                     entry.set(val)
             except Exception:
                 pass
 
-        s(self.a_url, cfg.get('a_url', self.a_url.get()))
-        s(self.b_url, cfg.get('b_url', self.b_url.get()))
-        s(self.a_model, cfg.get('a_model', self.a_model.get()))
-        s(self.b_model, cfg.get('b_model', self.b_model.get()))
-        s(self.a_persona, cfg.get('a_persona', self.a_persona.get()))
+        s(self.a_url, cfg.get("a_url", self.a_url.get()))
+        s(self.b_url, cfg.get("b_url", self.b_url.get()))
+        s(self.a_model, cfg.get("a_model", self.a_model.get()))
+        s(self.b_model, cfg.get("b_model", self.b_model.get()))
+        s(self.a_persona, cfg.get("a_persona", self.a_persona.get()))
         try:
-            s(self.a_name, cfg.get('a_name', self.a_name.get()))
+            s(self.a_name, cfg.get("a_name", self.a_name.get()))
         except Exception:
             pass
-        s(self.b_persona, cfg.get('b_persona', self.b_persona.get()))
-        s(self.a_age, cfg.get('a_age', self.a_age.get()))
-        s(self.b_age, cfg.get('b_age', self.b_age.get()))
-        s(self.a_quirk, cfg.get('a_quirk', self.a_quirk.get()))
-        s(self.b_quirk, cfg.get('b_quirk', self.b_quirk.get()))
+        s(self.b_persona, cfg.get("b_persona", self.b_persona.get()))
+        s(self.a_age, cfg.get("a_age", self.a_age.get()))
+        s(self.b_age, cfg.get("b_age", self.b_age.get()))
+        s(self.a_quirk, cfg.get("a_quirk", self.a_quirk.get()))
+        s(self.b_quirk, cfg.get("b_quirk", self.b_quirk.get()))
         try:
-            self.topic.delete(0, tk.END); self.topic.insert(0, cfg.get('topic', self.topic.get()))
-        except Exception:
-            pass
-        try:
-            self.turns.set(int(cfg.get('turns', self.turns.get())))
+            self.topic.delete(0, tk.END)
+            self.topic.insert(0, cfg.get("topic", self.topic.get()))
         except Exception:
             pass
         try:
-            self.delay.set(float(cfg.get('delay', self.delay.get())))
+            self.turns.set(int(cfg.get("turns", self.turns.get())))
         except Exception:
             pass
         try:
-            self.max_chars_a.set(int(cfg.get('max_chars_a', self.max_chars_a.get())))
+            self.delay.set(float(cfg.get("delay", self.delay.get())))
         except Exception:
             pass
         try:
-            self.max_chars_b.set(int(cfg.get('max_chars_b', self.max_chars_b.get())))
+            self.max_chars_a.set(int(cfg.get("max_chars_a", self.max_chars_a.get())))
         except Exception:
             pass
         try:
-            self.short_turn_var.set(bool(cfg.get('short_turn', self.short_turn_var.get())))
+            self.max_chars_b.set(int(cfg.get("max_chars_b", self.max_chars_b.get())))
         except Exception:
             pass
         try:
-            self.log_var.set(bool(cfg.get('log', self.log_var.get())))
-            self.log_path.delete(0, tk.END); self.log_path.insert(0, cfg.get('log_path', self.log_path.get()))
+            self.short_turn_var.set(bool(cfg.get("short_turn", self.short_turn_var.get())))
         except Exception:
             pass
         try:
-            self.close_on_exit_var.set(bool(cfg.get('close_on_exit', self.close_on_exit_var.get())))
+            self.log_var.set(bool(cfg.get("log", self.log_var.get())))
+            self.log_path.delete(0, tk.END)
+            self.log_path.insert(0, cfg.get("log_path", self.log_path.get()))
+        except Exception:
+            pass
+        try:
+            self.close_on_exit_var.set(bool(cfg.get("close_on_exit", self.close_on_exit_var.get())))
         except Exception:
             pass
         # load persona presets if present
-        pp = cfg.get('persona_presets')
+        pp = cfg.get("persona_presets")
         if isinstance(pp, dict):
             try:
-                self.persona_presets = {k: (str(v.get('age','')), v.get('quirk',''), v.get('prompt','')) for k, v in pp.items()}
+                self.persona_presets = {k: (str(v.get("age", "")), v.get("quirk", ""), v.get("prompt", "")) for k, v in pp.items()}
                 preset_names = list(self.persona_presets.keys())
-                self.a_preset['values'] = preset_names; self.b_preset['values'] = preset_names
+                self.a_preset["values"] = preset_names
+                self.b_preset["values"] = preset_names
             except Exception:
                 pass
         # Load persona file selections if present
         try:
-            a_pf = cfg.get('a_persona_file','')
-            b_pf = cfg.get('b_persona_file','')
-            if hasattr(self, 'a_persona_file_settings') and a_pf:
+            a_pf = cfg.get("a_persona_file", "")
+            b_pf = cfg.get("b_persona_file", "")
+            if hasattr(self, "a_persona_file_settings") and a_pf:
                 try:
                     self.a_persona_file_settings.set(a_pf)
                     p = os.path.join(os.path.dirname(__file__), a_pf)
                     if os.path.exists(p):
-                        with open(p, 'r', encoding='utf-8') as pf:
+                        with open(p, "r", encoding="utf-8") as pf:
                             txt = pf.read().strip()
-                        try: self.a_persona.delete(0, tk.END); self.a_persona.insert(0, txt)
-                        except Exception: pass
+                        try:
+                            self.a_persona.delete(0, tk.END)
+                            self.a_persona.insert(0, txt)
+                        except Exception:
+                            pass
                 except Exception:
                     pass
-            if hasattr(self, 'b_persona_file_settings') and b_pf:
+            if hasattr(self, "b_persona_file_settings") and b_pf:
                 try:
                     self.b_persona_file_settings.set(b_pf)
                     p = os.path.join(os.path.dirname(__file__), b_pf)
                     if os.path.exists(p):
-                        with open(p, 'r', encoding='utf-8') as pf:
+                        with open(p, "r", encoding="utf-8") as pf:
                             txt = pf.read().strip()
-                        try: self.b_persona.delete(0, tk.END); self.b_persona.insert(0, txt)
-                        except Exception: pass
+                        try:
+                            self.b_persona.delete(0, tk.END)
+                            self.b_persona.insert(0, txt)
+                        except Exception:
+                            pass
                 except Exception:
                     pass
         except Exception:
             pass
         # Load recent URLs if present
         try:
-            ra = cfg.get('recent_a_urls', []) or []
-            rb = cfg.get('recent_b_urls', []) or []
-            self._recent_urls['a'] = [u for u in ra if isinstance(u, str) and u.strip()]
-            self._recent_urls['b'] = [u for u in rb if isinstance(u, str) and u.strip()]
+            ra = cfg.get("recent_a_urls", []) or []
+            rb = cfg.get("recent_b_urls", []) or []
+            self._recent_urls["a"] = [u for u in ra if isinstance(u, str) and u.strip()]
+            self._recent_urls["b"] = [u for u in rb if isinstance(u, str) and u.strip()]
             try:
-                if hasattr(self, 'a_url'):
-                    self.a_url['values'] = self._recent_urls['a']
+                if hasattr(self, "a_url"):
+                    self.a_url["values"] = self._recent_urls["a"]
                     # set the combobox value to saved a_url if present
-                    try: self.a_url.set(cfg.get('a_url', self.a_url.get()))
-                    except Exception: pass
+                    try:
+                        self.a_url.set(cfg.get("a_url", self.a_url.get()))
+                    except Exception:
+                        pass
             except Exception:
                 pass
             try:
-                if hasattr(self, 'b_url'):
-                    self.b_url['values'] = self._recent_urls['b']
-                    try: self.b_url.set(cfg.get('b_url', self.b_url.get()))
-                    except Exception: pass
+                if hasattr(self, "b_url"):
+                    self.b_url["values"] = self._recent_urls["b"]
+                    try:
+                        self.b_url.set(cfg.get("b_url", self.b_url.get()))
+                    except Exception:
+                        pass
             except Exception:
                 pass
         except Exception:
             pass
         # Pull model management config load removed
         try:
-            ar = cfg.get('a_runtime', {}) or {}
+            ar = cfg.get("a_runtime", {}) or {}
             try:
-                self.a_temp.set(float(ar.get('temperature', self.a_temp.get())))
+                self.a_temp.set(float(ar.get("temperature", self.a_temp.get())))
             except Exception:
                 pass
             try:
-                self.a_max_tokens.set(int(ar.get('max_tokens', self.a_max_tokens.get())))
+                self.a_max_tokens.set(int(ar.get("max_tokens", self.a_max_tokens.get())))
             except Exception:
                 pass
             try:
-                self.a_top_p.set(float(ar.get('top_p', self.a_top_p.get())))
+                self.a_top_p.set(float(ar.get("top_p", self.a_top_p.get())))
             except Exception:
                 pass
             try:
                 self.a_stop.delete(0, tk.END)
-                self.a_stop.insert(0, ','.join(ar.get('stop', []) if isinstance(ar.get('stop', []), list) else []))
+                self.a_stop.insert(
+                    0,
+                    ",".join(ar.get("stop", []) if isinstance(ar.get("stop", []), list) else []),
+                )
             except Exception:
                 pass
             try:
-                self.a_stream.set(bool(ar.get('stream', self.a_stream.get())))
+                self.a_stream.set(bool(ar.get("stream", self.a_stream.get())))
             except Exception:
                 pass
         except Exception:
             pass
         try:
-            br = cfg.get('b_runtime', {}) or {}
+            br = cfg.get("b_runtime", {}) or {}
             try:
-                self.b_temp.set(float(br.get('temperature', self.b_temp.get())))
+                self.b_temp.set(float(br.get("temperature", self.b_temp.get())))
             except Exception:
                 pass
             try:
-                self.b_max_tokens.set(int(br.get('max_tokens', self.b_max_tokens.get())))
+                self.b_max_tokens.set(int(br.get("max_tokens", self.b_max_tokens.get())))
             except Exception:
                 pass
             try:
-                self.b_top_p.set(float(br.get('top_p', self.b_top_p.get())))
+                self.b_top_p.set(float(br.get("top_p", self.b_top_p.get())))
             except Exception:
                 pass
             try:
                 self.b_stop.delete(0, tk.END)
-                self.b_stop.insert(0, ','.join(br.get('stop', []) if isinstance(br.get('stop', []), list) else []))
+                self.b_stop.insert(
+                    0,
+                    ",".join(br.get("stop", []) if isinstance(br.get("stop", []), list) else []),
+                )
             except Exception:
                 pass
             try:
-                self.b_stream.set(bool(br.get('stream', self.b_stream.get())))
+                self.b_stream.set(bool(br.get("stream", self.b_stream.get())))
             except Exception:
                 pass
         except Exception:
             pass
         try:
-            s(self.b_name, cfg.get('b_name', self.b_name.get()))
+            s(self.b_name, cfg.get("b_name", self.b_name.get()))
         except Exception:
             pass
         except Exception:
@@ -1219,51 +1517,53 @@ class OllamaGUI:
     def _poll_queue(self):
         def format_markdown(md):
             import re
+
             # Bold: **text** or __text__
-            md = re.sub(r'\*\*(.*?)\*\*|__(.*?)__', lambda m: m.group(1) or m.group(2), md)
+            md = re.sub(r"\*\*(.*?)\*\*|__(.*?)__", lambda m: m.group(1) or m.group(2), md)
             # Italic: *text* or _text_
-            md = re.sub(r'\*(.*?)\*|_(.*?)_', lambda m: m.group(1) or m.group(2), md)
+            md = re.sub(r"\*(.*?)\*|_(.*?)_", lambda m: m.group(1) or m.group(2), md)
             # Inline code: `code`
-            md = re.sub(r'`([^`]*)`', r'[code]\1[/code]', md)
+            md = re.sub(r"`([^`]*)`", r"[code]\1[/code]", md)
             # Code blocks: ```code```
-            md = re.sub(r'```([\s\S]*?)```', r'\n[code]\1[/code]\n', md)
+            md = re.sub(r"```([\s\S]*?)```", r"\n[code]\1[/code]\n", md)
             # Lists: - item or * item
-            md = re.sub(r'^[\s]*[-\*] (.*)', r'• \1', md, flags=re.MULTILINE)
+            md = re.sub(r"^[\s]*[-\*] (.*)", r"• \1", md, flags=re.MULTILINE)
             # Headers: # Header
-            md = re.sub(r'^#+ (.*)', r'\1', md, flags=re.MULTILINE)
+            md = re.sub(r"^#+ (.*)", r"\1", md, flags=re.MULTILINE)
             # Blockquotes: > quote
-            md = re.sub(r'^> (.*)', r'"\1"', md, flags=re.MULTILINE)
+            md = re.sub(r"^> (.*)", r'"\1"', md, flags=re.MULTILINE)
             return md
 
         try:
             while True:
                 kind, text = self.queue.get_nowait()
-                fmt = self.formatting_var.get() if hasattr(self, 'formatting_var') else 'plain'
-                if fmt == 'plain':
+                fmt = self.formatting_var.get() if hasattr(self, "formatting_var") else "plain"
+                if fmt == "plain":
                     formatted = text
-                elif fmt == 'markdown':
+                elif fmt == "markdown":
                     formatted = format_markdown(text)
-                elif fmt == 'raw':
+                elif fmt == "raw":
                     formatted = text
                 else:
                     formatted = text
-                if kind == 'a':
-                    name = self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A'
-                    self.chat_text.config(state='normal')
-                    self.chat_text.insert('end', f"{name}: " + formatted + '\n\n')
-                    self.chat_text.see('end')
-                    self.chat_text.config(state='disabled')
-                elif kind == 'b':
-                    name = self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B'
-                    self.chat_text.config(state='normal')
-                    self.chat_text.insert('end', f"{name}: " + formatted + '\n\n')
-                    self.chat_text.see('end')
-                    self.chat_text.config(state='disabled')
-                elif kind == 'status':
+                if kind == "a":
+                    name = self.a_name.get().strip() if hasattr(self, "a_name") else "Agent_A"
+                    self.chat_text.config(state="normal")
+                    self.chat_text.insert("end", f"{name}: " + formatted + "\n\n")
+                    self.chat_text.see("end")
+                    self.chat_text.config(state="disabled")
+                elif kind == "b":
+                    name = self.b_name.get().strip() if hasattr(self, "b_name") else "Agent_B"
+                    self.chat_text.config(state="normal")
+                    self.chat_text.insert("end", f"{name}: " + formatted + "\n\n")
+                    self.chat_text.see("end")
+                    self.chat_text.config(state="disabled")
+                elif kind == "status":
                     self.status_var.set(formatted)
                     try:
                         import re
-                        m = re.search(r'Turn\s*(\d+)\s*/\s*(\d+)', formatted)
+
+                        m = re.search(r"Turn\s*(\d+)\s*/\s*(\d+)", formatted)
                         if m:
                             try:
                                 self.turn_count_var.set(f"{m.group(1)}/{m.group(2)}")
@@ -1271,18 +1571,20 @@ class OllamaGUI:
                                 pass
                     except Exception:
                         pass
-                elif kind == 'done':
-                    self.start_btn.config(state='normal'); self.stop_btn.config(state='disabled'); self.status_var.set('Finished.')
+                elif kind == "done":
+                    self.start_btn.config(state="normal")
+                    self.stop_btn.config(state="disabled")
+                    self.status_var.set("Finished.")
                     try:
-                        self.turn_count_var.set('')
+                        self.turn_count_var.set("")
                     except Exception:
                         pass
-                elif kind == 'user':
+                elif kind == "user":
                     try:
-                        self.chat_text.config(state='normal')
-                        self.chat_text.insert('end', f"You: {formatted}\n\n")
-                        self.chat_text.see('end')
-                        self.chat_text.config(state='disabled')
+                        self.chat_text.config(state="normal")
+                        self.chat_text.insert("end", f"You: {formatted}\n\n")
+                        self.chat_text.see("end")
+                        self.chat_text.config(state="disabled")
                     except Exception:
                         pass
         except queue.Empty:
@@ -1292,61 +1594,70 @@ class OllamaGUI:
     def start(self, greeting=None):
         if self.thread and self.thread.is_alive():
             return
-        self.chat_text.delete('1.0', 'end')
+        self.chat_text.delete("1.0", "end")
         self.stop_event.clear()
-        self.start_btn.config(state='disabled'); self.stop_btn.config(state='normal'); self.status_var.set('Running...')
+        self.start_btn.config(state="disabled")
+        self.stop_btn.config(state="normal")
+        self.status_var.set("Running...")
         try:
             self.turn_count_var.set(f"0/{int(self.turns.get())}")
         except Exception:
-            try: self.turn_count_var.set('')
-            except Exception: pass
+            try:
+                self.turn_count_var.set("")
+            except Exception:
+                pass
         cfg = {
-            'a_url': self.a_url.get().strip(),
-            'a_name': self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A',
-            'a_model': self.a_model.get().strip(),
-            'a_persona': self.a_persona.get().strip(),
-            'a_persona_file': self.a_persona_file_settings.get().strip() if hasattr(self, 'a_persona_file_settings') else '',
-            'a_age': self.a_age.get().strip(),
-            'a_quirk': self.a_quirk.get().strip(),
-            'b_url': self.b_url.get().strip(),
-            'b_model': self.b_model.get().strip(),
-            'b_persona': self.b_persona.get().strip(),
-            'b_persona_file': self.b_persona_file_settings.get().strip() if hasattr(self, 'b_persona_file_settings') else '',
-            'b_age': self.b_age.get().strip(),
-            'b_quirk': self.b_quirk.get().strip(),
-            'topic': self.topic.get().strip(),
-            'turns': int(self.turns.get()),
-            'delay': float(self.delay.get()),
-            'humanize': bool(self.humanize_var.get()),
-            'greeting': (greeting or (self.greeting.get().strip() if hasattr(self, 'greeting') else '') ) or None,
-            'max_chars_a': int(self.max_chars_a.get()),
-            'max_chars_b': int(self.max_chars_b.get()),
-            'short_turn': bool(self.short_turn_var.get()),
-            'log': bool(self.log_var.get()),
-            'log_path': self.log_path.get().strip() or None,
-            'a_runtime': {
-                'temperature': float(self.a_temp.get()),
-                'max_tokens': int(self.a_max_tokens.get()),
-                'top_p': float(self.a_top_p.get()),
-                'stop': [s.strip() for s in self.a_stop.get().split(',') if s.strip()],
-                'stream': bool(self.a_stream.get()),
+            "a_url": self.a_url.get().strip(),
+            "a_name": self.a_name.get().strip() if hasattr(self, "a_name") else "Agent_A",
+            "a_model": self.a_model.get().strip(),
+            "a_persona": self.a_persona.get().strip(),
+            "a_persona_file": self.a_persona_file_settings.get().strip() if hasattr(self, "a_persona_file_settings") else "",
+            "a_age": self.a_age.get().strip(),
+            "a_quirk": self.a_quirk.get().strip(),
+            "b_url": self.b_url.get().strip(),
+            "b_model": self.b_model.get().strip(),
+            "b_persona": self.b_persona.get().strip(),
+            "b_persona_file": self.b_persona_file_settings.get().strip() if hasattr(self, "b_persona_file_settings") else "",
+            "b_age": self.b_age.get().strip(),
+            "b_quirk": self.b_quirk.get().strip(),
+            "topic": self.topic.get().strip(),
+            "turns": int(self.turns.get()),
+            "delay": float(self.delay.get()),
+            "humanize": bool(self.humanize_var.get()),
+            "greeting": (greeting or (self.greeting.get().strip() if hasattr(self, "greeting") else "")) or None,
+            "max_chars_a": int(self.max_chars_a.get()),
+            "max_chars_b": int(self.max_chars_b.get()),
+            "short_turn": bool(self.short_turn_var.get()),
+            "log": bool(self.log_var.get()),
+            "log_path": self.log_path.get().strip() or None,
+            "a_runtime": {
+                "temperature": float(self.a_temp.get()),
+                "max_tokens": int(self.a_max_tokens.get()),
+                "top_p": float(self.a_top_p.get()),
+                "stop": [s.strip() for s in self.a_stop.get().split(",") if s.strip()],
+                "stream": bool(self.a_stream.get()),
             },
-            'b_runtime': {
-                'temperature': float(self.b_temp.get()),
-                'max_tokens': int(self.b_max_tokens.get()),
-                'top_p': float(self.b_top_p.get()),
-                'stop': [s.strip() for s in self.b_stop.get().split(',') if s.strip()],
-                'stream': bool(self.b_stream.get()),
+            "b_runtime": {
+                "temperature": float(self.b_temp.get()),
+                "max_tokens": int(self.b_max_tokens.get()),
+                "top_p": float(self.b_top_p.get()),
+                "stop": [s.strip() for s in self.b_stop.get().split(",") if s.strip()],
+                "stream": bool(self.b_stream.get()),
             },
-            'b_name': self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B',
+            "b_name": self.b_name.get().strip() if hasattr(self, "b_name") else "Agent_B",
         }
         # create an inbound queue for injected user messages during a running conversation
         self.to_worker_queue = queue.Queue()
-        self.thread = threading.Thread(target=self._run_conversation, args=(cfg, self.stop_event, self.queue, self.to_worker_queue), daemon=True)
+        self.thread = threading.Thread(
+            target=self._run_conversation,
+            args=(cfg, self.stop_event, self.queue, self.to_worker_queue),
+            daemon=True,
+        )
         self.thread.start()
 
     def stop(self):
-        self.stop_event.set(); self.status_var.set('Stopping...')
+        self.stop_event.set()
+        self.status_var.set("Stopping...")
 
     def on_close(self):
         try:
@@ -1368,105 +1679,139 @@ class OllamaGUI:
             pass
         # Exit process only if the user enabled the option
         try:
-            if getattr(self, 'close_on_exit_var', None) and self.close_on_exit_var.get():
+            if getattr(self, "close_on_exit_var", None) and self.close_on_exit_var.get():
                 import os
+
                 os._exit(0)
         except Exception:
             try:
                 import sys
+
                 sys.exit(0)
             except Exception:
                 pass
 
-    def _fetch_models(self, server_url, combobox, button, status_label=None, status_icon=None, agent=None):
+    def _fetch_models(
+        self,
+        server_url,
+        combobox,
+        button,
+        status_label=None,
+        status_icon=None,
+        agent=None,
+    ):
         # Insert visible debug message in B Listbox at start
-        if agent == 'b_settings':
+        if agent == "b_settings":
             self.b_model_list.delete(0, tk.END)
-            self.b_model_list.insert(tk.END, '(Refreshing...)')
-            self._add_model_status('Started refreshing models for agent B', 'info')
+            self.b_model_list.insert(tk.END, "(Refreshing...)")
+            self._add_model_status("Started refreshing models for agent B", "info")
+
         def worker():
             try:
                 try:
                     if button:
                         try:
-                            self.root.after(0, lambda: button.config(state='disabled'))
+                            self.root.after(0, lambda: button.config(state="disabled"))
                         except Exception:
-                            button.config(state='disabled')
+                            button.config(state="disabled")
                 except Exception:
                     pass
                 if not server_url:
-                    self.queue.put(('status', 'Server URL empty'))
+                    self.queue.put(("status", "Server URL empty"))
                     if status_label is not None:
                         try:
                             try:
-                                self.root.after(0, lambda: status_label.config(text='●', foreground='gray'))
+                                self.root.after(
+                                    0,
+                                    lambda: status_label.config(text="●", foreground="gray"),
+                                )
                             except Exception:
-                                status_label.config(text='●', foreground='gray')
-                        except Exception: pass
-                    if agent in ('a_settings', 'b_settings'):
+                                status_label.config(text="●", foreground="gray")
+                        except Exception:
+                            pass
+                    if agent in ("a_settings", "b_settings"):
                         try:
                             self.root.after(0, lambda: self._update_models_text(agent, []))
                         except Exception:
-                            try: self._update_models_text(agent, [])
-                            except Exception: pass
+                            try:
+                                self._update_models_text(agent, [])
+                            except Exception:
+                                pass
                     return
-                endpoints = ['/models', '/v1/models', '/api/models']
+                endpoints = ["/models", "/v1/models", "/api/models"]
                 models = []
                 last_exc = None
                 attempts = []
                 for ep in endpoints:
                     try:
-                        url = server_url.rstrip('/') + ep
-                        attempts.append(f'GET {url}')
+                        url = server_url.rstrip("/") + ep
+                        attempts.append(f"GET {url}")
                         req = urllib.request.Request(url)
                         with urllib.request.urlopen(req, timeout=1) as resp:
                             raw = resp.read()
                         try:
-                            data = json.loads(raw.decode('utf-8', errors='ignore'))
+                            data = json.loads(raw.decode("utf-8", errors="ignore"))
                         except Exception:
-                            txt = raw.decode('utf-8', errors='ignore').strip()
-                            if '\n' in txt:
-                                lines = [l.strip() for l in txt.splitlines() if l.strip()]
-                                models.extend(lines); break
-                            self.queue.put(('status', f'Got non-JSON response from {url}: {txt[:200]}'))
+                            txt = raw.decode("utf-8", errors="ignore").strip()
+                            if "\n" in txt:
+                                lines = [line.strip() for line in txt.splitlines() if line.strip()]
+                                models.extend(lines)
+                                break
+                            self.queue.put(
+                                (
+                                    "status",
+                                    f"Got non-JSON response from {url}: {txt[:200]}",
+                                )
+                            )
                             continue
                         if isinstance(data, list):
                             for item in data:
                                 if isinstance(item, dict):
-                                    name = item.get('name') or item.get('model') or item.get('id')
-                                    if name: models.append(name)
+                                    name = item.get("name") or item.get("model") or item.get("id")
+                                    if name:
+                                        models.append(name)
                                 else:
                                     models.append(str(item))
                         elif isinstance(data, dict):
-                            for key in ('models', 'results', 'data'):
+                            for key in ("models", "results", "data"):
                                 if key in data and isinstance(data[key], list):
                                     for item in data[key]:
                                         if isinstance(item, dict):
-                                            n = item.get('name') or item.get('model') or item.get('id') or item.get('modelId')
-                                            if n: models.append(n)
+                                            n = item.get("name") or item.get("model") or item.get("id") or item.get("modelId")
+                                            if n:
+                                                models.append(n)
                             if not models:
                                 for v in data.values():
-                                    if isinstance(v, str): models.append(v)
-                        if models: break
+                                    if isinstance(v, str):
+                                        models.append(v)
+                        if models:
+                            break
                     except Exception as ie:
-                        last_exc = ie; attempts.append(f'ERROR {ep}: {repr(ie)}'); continue
+                        last_exc = ie
+                        attempts.append(f"ERROR {ep}: {repr(ie)}")
+                        continue
 
                 def _set_icon_color(col: str):
                     try:
                         if status_label is not None:
-                            color_map = {'green': 'green', 'red': 'red', 'gray': 'gray'}
+                            color_map = {"green": "green", "red": "red", "gray": "gray"}
                             try:
-                                self.root.after(0, lambda: status_label.config(text='●', foreground=color_map.get(col, 'gray')))
+                                self.root.after(
+                                    0,
+                                    lambda: status_label.config(text="●", foreground=color_map.get(col, "gray")),
+                                )
                             except Exception:
-                                status_label.config(text='●', foreground=color_map.get(col, 'gray'))
+                                status_label.config(text="●", foreground=color_map.get(col, "gray"))
                     except Exception:
                         pass
 
                 if models:
-                    seen = set(); unique = []
+                    seen = set()
+                    unique = []
                     for m in models:
                         if m not in seen:
-                            seen.add(m); unique.append(m)
+                            seen.add(m)
+                            unique.append(m)
                     if combobox:
                         try:
                             try:
@@ -1485,80 +1830,122 @@ class OllamaGUI:
                             pass
                     try:
                         try:
-                            self.root.after(0, lambda: self._add_model_status(f'Loaded {len(unique)} models from {server_url}', 'info'))
+                            self.root.after(
+                                0,
+                                lambda: self._add_model_status(
+                                    f"Loaded {len(unique)} models from {server_url}",
+                                    "info",
+                                ),
+                            )
                         except Exception:
-                            self._add_model_status(f'Loaded {len(unique)} models from {server_url}', 'info')
+                            self._add_model_status(f"Loaded {len(unique)} models from {server_url}", "info")
                     except Exception:
                         pass
                     # Always update the model list in the main GUI combobox as well
                     # Always update the correct Listbox in Settings after fetch
-                    if agent == 'a_settings':
+                    if agent == "a_settings":
                         try:
-                            self.root.after(0, lambda: self._update_models_text('a_settings', unique))
+                            self.root.after(
+                                0,
+                                lambda: self._update_models_text("a_settings", unique),
+                            )
                         except Exception:
-                            try: self._update_models_text('a_settings', unique)
-                            except Exception: pass
-                    if agent == 'b_settings':
+                            try:
+                                self._update_models_text("a_settings", unique)
+                            except Exception:
+                                pass
+                    if agent == "b_settings":
                         try:
-                            self.root.after(0, lambda: self._update_models_text('b_settings', unique))
+                            self.root.after(
+                                0,
+                                lambda: self._update_models_text("b_settings", unique),
+                            )
                         except Exception:
-                            try: self._update_models_text('b_settings', unique)
-                            except Exception: pass
+                            try:
+                                self._update_models_text("b_settings", unique)
+                            except Exception:
+                                pass
                     if status_label is not None:
-                        try: _set_icon_color('green')
-                        except Exception: pass
+                        try:
+                            _set_icon_color("green")
+                        except Exception:
+                            pass
                 else:
-                    msg = f'No models found at {server_url}'
-                    if last_exc: msg += f': {repr(last_exc)}'
+                    msg = f"No models found at {server_url}"
+                    if last_exc:
+                        msg += f": {repr(last_exc)}"
                     if agent:
                         try:
                             self.root.after(0, lambda: self._update_models_text(agent, []))
                         except Exception:
-                            try: self._update_models_text(agent, [])
-                            except Exception: pass
+                            try:
+                                self._update_models_text(agent, [])
+                            except Exception:
+                                pass
                     try:
                         import datetime
-                        dbg_path = 'model_fetch_debug.log'
-                        with open(dbg_path, 'a', encoding='utf-8') as df:
-                            df.write(f'[{datetime.datetime.now().isoformat()}] Fetch models debug for {server_url}\n')
-                            for a in attempts: df.write(a + '\n')
-                            if last_exc: df.write('Last exception: ' + repr(last_exc) + '\n')
-                            df.write('\n')
+
+                        dbg_path = "model_fetch_debug.log"
+                        with open(dbg_path, "a", encoding="utf-8") as df:
+                            df.write(f"[{datetime.datetime.now().isoformat()}] Fetch models debug for {server_url}\n")
+                            for a in attempts:
+                                df.write(a + "\n")
+                            if last_exc:
+                                df.write("Last exception: " + repr(last_exc) + "\n")
+                            df.write("\n")
                     except Exception:
                         pass
                     try:
                         try:
-                            self.root.after(0, lambda: self._add_model_status(msg + ' (see model_fetch_debug.log)', 'error'))
+                            self.root.after(
+                                0,
+                                lambda: self._add_model_status(msg + " (see model_fetch_debug.log)", "error"),
+                            )
                         except Exception:
-                            self._add_model_status(msg + ' (see model_fetch_debug.log)', 'error')
+                            self._add_model_status(msg + " (see model_fetch_debug.log)", "error")
                     except Exception:
                         pass
                     try:
                         try:
-                            self.root.after(0, lambda: messagebox.showerror('Model Fetch Failed', msg + '\n\nSee model_fetch_debug.log for details.'))
+                            self.root.after(
+                                0,
+                                lambda: messagebox.showerror(
+                                    "Model Fetch Failed",
+                                    msg + "\n\nSee model_fetch_debug.log for details.",
+                                ),
+                            )
                         except Exception:
-                            messagebox.showerror('Model Fetch Failed', msg + '\n\nSee model_fetch_debug.log for details.')
+                            messagebox.showerror(
+                                "Model Fetch Failed",
+                                msg + "\n\nSee model_fetch_debug.log for details.",
+                            )
                     except Exception:
                         pass
                     if status_label is not None:
-                        try: _set_icon_color('red')
-                        except Exception: pass
+                        try:
+                            _set_icon_color("red")
+                        except Exception:
+                            pass
             except Exception as e:
-                self._add_model_status(f'Model fetch failed: {repr(e)}', 'error')
+                self._add_model_status(f"Model fetch failed: {repr(e)}", "error")
             finally:
                 try:
                     if button:
                         try:
-                            self.root.after(0, lambda: button.config(state='normal'))
+                            self.root.after(0, lambda: button.config(state="normal"))
                         except Exception:
-                            button.config(state='normal')
-                except Exception: pass
-                if agent == 'b_settings':
+                            button.config(state="normal")
+                except Exception:
+                    pass
+                if agent == "b_settings":
                     try:
                         try:
-                            self.root.after(0, lambda: self._add_model_status('Finished refreshing models for agent B', 'info'))
+                            self.root.after(
+                                0,
+                                lambda: self._add_model_status("Finished refreshing models for agent B", "info"),
+                            )
                         except Exception:
-                            self._add_model_status('Finished refreshing models for agent B', 'info')
+                            self._add_model_status("Finished refreshing models for agent B", "info")
                     except Exception:
                         pass
 
@@ -1573,6 +1960,7 @@ class OllamaGUI:
                         combobox.update_idletasks()
                 except Exception:
                     pass
+
         threading.Thread(target=run_and_force_update, daemon=True).start()
 
     def _pull_now(self, server_url, model_name):
@@ -1585,9 +1973,11 @@ class OllamaGUI:
         pass
 
     def _pull_to_urls(self, url_list, model_name):
-        import requests, json
+        import requests
+        import json
+
         if not url_list or not model_name:
-            messagebox.showerror('Pull Model', 'No server URL or model name specified.')
+            messagebox.showerror("Pull Model", "No server URL or model name specified.")
             return
         for server_url in url_list:
             if not server_url:
@@ -1599,19 +1989,29 @@ class OllamaGUI:
             except Exception:
                 pass
             try:
-                status_msg = f'Pulling model {model_name} to {server_url}...'
+                status_msg = f"Pulling model {model_name} to {server_url}..."
                 self._set_model_busy(status_msg)
-                self._add_model_status(status_msg, 'info')
-                url = server_url.rstrip('/') + '/api/pull'
+                self._add_model_status(status_msg, "info")
+                url = server_url.rstrip("/") + "/api/pull"
 
                 # Prepare progress UI (use determinate mode and start at 0)
                 try:
                     if self.pull_progress is not None:
-                        self.root.after(0, lambda: (self.pull_progress.config(mode='determinate', maximum=100), self.pull_progress.config(value=0), self.pull_progress.update_idletasks()))
+                        self.root.after(
+                            0,
+                            lambda: (
+                                self.pull_progress.config(mode="determinate", maximum=100),
+                                self.pull_progress.config(value=0),
+                                self.pull_progress.update_idletasks(),
+                            ),
+                        )
                     if self.pull_progress_label is not None:
-                        self.root.after(0, lambda: self.pull_progress_label.config(text='Starting...'))
+                        self.root.after(
+                            0,
+                            lambda: self.pull_progress_label.config(text="Starting..."),
+                        )
                     if self.cancel_pull_btn is not None:
-                        self.root.after(0, lambda: self.cancel_pull_btn.config(state='normal'))
+                        self.root.after(0, lambda: self.cancel_pull_btn.config(state="normal"))
                 except Exception:
                     pass
 
@@ -1619,13 +2019,15 @@ class OllamaGUI:
                 if resp.status_code not in (200, 201):
                     # Non-success — read small body and show error
                     try:
-                        err = resp.json().get('error')
+                        err = resp.json().get("error")
                     except Exception:
                         err = resp.text
-                    fail_msg = f'Failed to pull model to {server_url}: {err}'
-                    self._add_model_status(fail_msg, 'error')
-                    try: self.root.after(0, lambda: messagebox.showerror('Pull Model', fail_msg))
-                    except Exception: pass
+                    fail_msg = f"Failed to pull model to {server_url}: {err}"
+                    self._add_model_status(fail_msg, "error")
+                    try:
+                        self.root.after(0, lambda: messagebox.showerror("Pull Model", fail_msg))
+                    except Exception:
+                        pass
                 else:
                     # Stream and update progress when possible
                     cancelled = False
@@ -1633,7 +2035,7 @@ class OllamaGUI:
                         for raw in resp.iter_lines(decode_unicode=True):
                             if self.cancel_pull_var is not None and self.cancel_pull_var.get():
                                 cancelled = True
-                                self._add_model_status('Pull cancelled by user', 'warning')
+                                self._add_model_status("Pull cancelled by user", "warning")
                                 break
                             if not raw:
                                 continue
@@ -1647,42 +2049,44 @@ class OllamaGUI:
                             msg_text = None
                             if isinstance(parsed, dict):
                                 # Common keys: 'progress', 'percent', 'status', 'message', 'downloaded','total'
-                                for k in ('progress','percent','download_percent'):
+                                for k in ("progress", "percent", "download_percent"):
                                     if k in parsed:
                                         try:
                                             pct = float(parsed.get(k) or 0.0)
                                         except Exception:
                                             pct = None
                                         break
-                                if pct is None and 'downloaded' in parsed and 'total' in parsed:
+                                if pct is None and "downloaded" in parsed and "total" in parsed:
                                     try:
-                                        downloaded = float(parsed.get('downloaded') or 0)
-                                        total = float(parsed.get('total') or 1)
+                                        downloaded = float(parsed.get("downloaded") or 0)
+                                        total = float(parsed.get("total") or 1)
                                         pct = (downloaded / total) * 100.0
                                     except Exception:
                                         pct = None
-                                msg_text = parsed.get('status') or parsed.get('message') or parsed.get('msg') or None
+                                msg_text = parsed.get("status") or parsed.get("message") or parsed.get("msg") or None
                             else:
                                 msg_text = line
 
                             if pct is not None:
                                 try:
                                     p = max(0, min(100, int(pct)))
+
                                     def _set_pct(v=p):
                                         try:
                                             if self.pull_progress is not None:
                                                 try:
-                                                    self.pull_progress.config(mode='determinate', value=v)
+                                                    self.pull_progress.config(mode="determinate", value=v)
                                                     self.pull_progress.update_idletasks()
                                                 except Exception:
                                                     try:
-                                                        self.pull_progress['value'] = v
+                                                        self.pull_progress["value"] = v
                                                     except Exception:
                                                         pass
                                             if self.pull_progress_label is not None:
-                                                self.pull_progress_label.config(text=f'{v}%')
+                                                self.pull_progress_label.config(text=f"{v}%")
                                         except Exception:
                                             pass
+
                                     self.root.after(0, _set_pct)
                                 except Exception:
                                     pass
@@ -1690,37 +2094,58 @@ class OllamaGUI:
                                 # show textual status
                                 if msg_text:
                                     try:
-                                        self.root.after(0, lambda t=msg_text: self.pull_progress_label.config(text=str(t)[:200]))
+                                        self.root.after(
+                                            0,
+                                            lambda t=msg_text: self.pull_progress_label.config(text=str(t)[:200]),
+                                        )
                                     except Exception:
                                         pass
                     except Exception as stream_exc:
-                        self._add_model_status(f'Error during pull stream: {stream_exc}', 'error')
+                        self._add_model_status(f"Error during pull stream: {stream_exc}", "error")
 
                     # Completed or cancelled
                     if cancelled:
-                        try: self.root.after(0, lambda: messagebox.showinfo('Pull Model', f'Pull cancelled for {server_url}'))
-                        except Exception: pass
+                        try:
+                            self.root.after(
+                                0,
+                                lambda: messagebox.showinfo("Pull Model", f"Pull cancelled for {server_url}"),
+                            )
+                        except Exception:
+                            pass
                     else:
                         success_msg = f'Model "{model_name}" pulled successfully to {server_url}.'
-                        self._add_model_status(success_msg, 'info')
-                        try: self.root.after(0, lambda: messagebox.showinfo('Pull Model', success_msg))
-                        except Exception: pass
+                        self._add_model_status(success_msg, "info")
+                        try:
+                            self.root.after(
+                                0,
+                                lambda: messagebox.showinfo("Pull Model", success_msg),
+                            )
+                        except Exception:
+                            pass
 
                 # Finalize progress UI
                 try:
                     if self.pull_progress is not None:
-                        self.root.after(0, lambda: (self.pull_progress.config(mode='determinate', value=100), self.pull_progress.update_idletasks()))
+                        self.root.after(
+                            0,
+                            lambda: (
+                                self.pull_progress.config(mode="determinate", value=100),
+                                self.pull_progress.update_idletasks(),
+                            ),
+                        )
                     if self.pull_progress_label is not None:
-                        self.root.after(0, lambda: self.pull_progress_label.config(text=''))
+                        self.root.after(0, lambda: self.pull_progress_label.config(text=""))
                     if self.cancel_pull_btn is not None:
-                        self.root.after(0, lambda: self.cancel_pull_btn.config(state='disabled'))
+                        self.root.after(0, lambda: self.cancel_pull_btn.config(state="disabled"))
                 except Exception:
                     pass
             except Exception as e:
-                err_msg = f'Error pulling model to {server_url}: {e}'
-                self._add_model_status(err_msg, 'error')
-                try: self.root.after(0, lambda: messagebox.showerror('Pull Model', err_msg))
-                except Exception: pass
+                err_msg = f"Error pulling model to {server_url}: {e}"
+                self._add_model_status(err_msg, "error")
+                try:
+                    self.root.after(0, lambda: messagebox.showerror("Pull Model", err_msg))
+                except Exception:
+                    pass
             finally:
                 self._clear_model_busy()
                 # Refresh model list for the relevant agent
@@ -1735,24 +2160,25 @@ class OllamaGUI:
     def _remove_model(self, server_url, model_name):
         # Remove a model from the Ollama server using the correct API endpoint
         import requests
+
         if not server_url or not model_name:
-            messagebox.showerror('Remove Model', 'No server URL or model name specified.')
+            messagebox.showerror("Remove Model", "No server URL or model name specified.")
             return
         try:
-            self._set_model_busy(f'Removing model {model_name}...')
+            self._set_model_busy(f"Removing model {model_name}...")
             # Ollama expects DELETE /api/delete with JSON body: {"name": "modelname"}
-            url = server_url.rstrip('/') + '/api/delete'
+            url = server_url.rstrip("/") + "/api/delete"
             resp = requests.delete(url, json={"name": model_name}, timeout=10)
             if resp.status_code == 200:
-                messagebox.showinfo('Remove Model', f'Model "{model_name}" removed successfully.')
+                messagebox.showinfo("Remove Model", f'Model "{model_name}" removed successfully.')
             else:
                 try:
-                    err = resp.json().get('error')
+                    err = resp.json().get("error")
                 except Exception:
                     err = resp.text
-                messagebox.showerror('Remove Model', f'Failed to remove model: {err}')
+                messagebox.showerror("Remove Model", f"Failed to remove model: {err}")
         except Exception as e:
-            messagebox.showerror('Remove Model', f'Error removing model: {e}')
+            messagebox.showerror("Remove Model", f"Error removing model: {e}")
         finally:
             self._clear_model_busy()
             # Refresh model list for the relevant agent
@@ -1763,12 +2189,16 @@ class OllamaGUI:
 
     def _apply_preset(self, preset_name, age_cb, quirk_cb, persona_entry):
         try:
-            if not preset_name: return
+            if not preset_name:
+                return
             v = self.persona_presets.get(preset_name)
-            if not v: return
+            if not v:
+                return
             age, quirk, persona_text = v
-            try: age_cb.set(age)
-            except Exception: pass
+            try:
+                age_cb.set(age)
+            except Exception:
+                pass
             try:
                 quirk_cb.set(quirk)
             except Exception:
@@ -1777,98 +2207,138 @@ class OllamaGUI:
                     quirk_cb.insert(0, quirk)
                 except Exception:
                     pass
-            try: persona_entry.delete(0, tk.END); persona_entry.insert(0, persona_text)
-            except Exception: pass
-            try: self.queue.put(('status', f'Applied preset: {preset_name}'))
-            except Exception: pass
+            try:
+                persona_entry.delete(0, tk.END)
+                persona_entry.insert(0, persona_text)
+            except Exception:
+                pass
+            try:
+                self.queue.put(("status", f"Applied preset: {preset_name}"))
+            except Exception:
+                pass
         except Exception:
             pass
 
     def reset_defaults(self):
         try:
-            self.a_url.delete(0, tk.END); self.a_url.insert(0, 'http://localhost:11434')
-        except Exception: pass
+            self.a_url.delete(0, tk.END)
+            self.a_url.insert(0, "http://localhost:11434")
+        except Exception:
+            pass
         try:
-            self.b_url.delete(0, tk.END); self.b_url.insert(0, 'http://192.168.127.121:11434')
-        except Exception: pass
-        try: self.a_model.set('llama2')
-        except Exception: pass
-        try: self.b_model.set('llama2')
-        except Exception: pass
-        try: self.a_persona.delete(0, tk.END); self.a_persona.insert(0, '')
-        except Exception: pass
-        try: self.b_persona.delete(0, tk.END); self.b_persona.insert(0, '')
-        except Exception: pass
+            self.b_url.delete(0, tk.END)
+            self.b_url.insert(0, "http://192.168.127.121:11434")
+        except Exception:
+            pass
+        try:
+            self.a_model.set("llama2")
+        except Exception:
+            pass
+        try:
+            self.b_model.set("llama2")
+        except Exception:
+            pass
+        try:
+            self.a_persona.delete(0, tk.END)
+            self.a_persona.insert(0, "")
+        except Exception:
+            pass
+        try:
+            self.b_persona.delete(0, tk.END)
+            self.b_persona.insert(0, "")
+        except Exception:
+            pass
         try:
             self.a_age.delete(0, tk.END)
-            self.a_age.insert(0, '45')
+            self.a_age.insert(0, "45")
             self.b_age.delete(0, tk.END)
-            self.b_age.insert(0, '28')
+            self.b_age.insert(0, "28")
         except Exception:
             pass
         try:
             self.a_quirk.delete(0, tk.END)
-            self.a_quirk.insert(0, 'polite phrasing')
+            self.a_quirk.insert(0, "polite phrasing")
             self.b_quirk.delete(0, tk.END)
-            self.b_quirk.insert(0, 'uses slang')
+            self.b_quirk.insert(0, "uses slang")
         except Exception:
             pass
         try:
             try:
-                self.a_name.delete(0, tk.END); self.a_name.insert(0, 'Ava')
+                self.a_name.delete(0, tk.END)
+                self.a_name.insert(0, "Ava")
             except Exception:
                 pass
             try:
-                self.b_name.delete(0, tk.END); self.b_name.insert(0, 'Orion')
+                self.b_name.delete(0, tk.END)
+                self.b_name.insert(0, "Orion")
             except Exception:
                 pass
         except Exception:
             pass
-        try: self.max_chars_a.set(120); self.max_chars_b.set(120)
-        except Exception: pass
-        try: self.short_turn_var.set(True)
-        except Exception: pass
+        try:
+            self.max_chars_a.set(120)
+            self.max_chars_b.set(120)
+        except Exception:
+            pass
+        try:
+            self.short_turn_var.set(True)
+        except Exception:
+            pass
         # restore default presets
         self.load_personas()
         try:
             preset_names = list(self.persona_presets.keys())
-            self.a_preset['values'] = preset_names; self.b_preset['values'] = preset_names
-            if preset_names: self.a_preset.set(preset_names[0]); self.b_preset.set(preset_names[0])
-        except Exception: pass
-        # clear persona file selections by default
-        try:
-            if hasattr(self, 'a_persona_file_settings'):
-                try: self.a_persona_file_settings.set('')
-                except Exception: pass
-            if hasattr(self, 'b_persona_file_settings'):
-                try: self.b_persona_file_settings.set('')
-                except Exception: pass
+            self.a_preset["values"] = preset_names
+            self.b_preset["values"] = preset_names
+            if preset_names:
+                self.a_preset.set(preset_names[0])
+                self.b_preset.set(preset_names[0])
         except Exception:
             pass
-        self.queue.put(('status', 'Defaults restored'))
-        try: self.save_config()
-        except Exception: pass
+        # clear persona file selections by default
+        try:
+            if hasattr(self, "a_persona_file_settings"):
+                try:
+                    self.a_persona_file_settings.set("")
+                except Exception:
+                    pass
+            if hasattr(self, "b_persona_file_settings"):
+                try:
+                    self.b_persona_file_settings.set("")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        self.queue.put(("status", "Defaults restored"))
+        try:
+            self.save_config()
+        except Exception:
+            pass
 
     def _run_conversation(self, cfg, stop_event, out_queue, in_queue=None):
         log_file = None
         try:
-            topic = cfg['topic']
+            topic = cfg["topic"]
             try:
-                out_queue.put(('status', f"Using topic: {topic}"))
+                out_queue.put(("status", f"Using topic: {topic}"))
             except Exception:
                 pass
+
             def build_persona(base, age, quirk):
                 parts = []
-                if base: parts.append(base)
-                if age: parts.append(f"Age: {age}")
-                if quirk: parts.append(f"Quirk: {quirk}")
-                return ' | '.join(parts) if parts else ''
+                if base:
+                    parts.append(base)
+                if age:
+                    parts.append(f"Age: {age}")
+                if quirk:
+                    parts.append(f"Quirk: {quirk}")
+                return " | ".join(parts) if parts else ""
 
-            persona_a = build_persona(cfg.get('a_persona'), cfg.get('a_age'), cfg.get('a_quirk'))
-            persona_b = build_persona(cfg.get('b_persona'), cfg.get('b_age'), cfg.get('b_quirk'))
+            persona_a = build_persona(cfg.get("a_persona"), cfg.get("a_age"), cfg.get("a_quirk"))
+            persona_b = build_persona(cfg.get("b_persona"), cfg.get("b_age"), cfg.get("b_quirk"))
 
-            name_a = cfg.get('a_name') or 'Agent_A'
-            name_b = cfg.get('b_name') or 'Agent_B'
+            name_a = cfg.get("a_name") or "Agent_A"
+            name_b = cfg.get("b_name") or "Agent_B"
             instruction = (
                 "Important: In every reply, explicitly reference the discussion topic and keep responses focused on it. "
                 "Begin each response by briefly restating the topic and avoid unrelated tangents. "
@@ -1877,46 +2347,54 @@ class OllamaGUI:
             sys_a = f"{instruction} You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}".strip()
             sys_b = f"{instruction} You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}".strip()
 
-            messages_a = [{'role': 'system', 'content': sys_a}]
-            messages_b = [{'role': 'system', 'content': sys_b}]
+            messages_a = [{"role": "system", "content": sys_a}]
+            messages_b = [{"role": "system", "content": sys_b}]
 
             # Prefer an explicit greeting passed to start(); otherwise follow the humanize/topic settings
-            if cfg.get('greeting'):
-                initial_prompt = cfg.get('greeting')
-            elif cfg.get('humanize'):
-                initial_prompt = 'Hello, how are you?'
+            if cfg.get("greeting"):
+                initial_prompt = cfg.get("greeting")
+            elif cfg.get("humanize"):
+                initial_prompt = "Hello, how are you?"
             else:
                 initial_prompt = f"Let's discuss {topic}. I think..."
 
-            out_queue.put(('b', f"(initial) {initial_prompt}"))
+            out_queue.put(("b", f"(initial) {initial_prompt}"))
             # Add the initial user prompt to both agents so they both answer the question
             try:
-                messages_b.append({'role': 'user', 'content': initial_prompt})
-                messages_a.append({'role': 'user', 'content': initial_prompt})
+                messages_b.append({"role": "user", "content": initial_prompt})
+                messages_a.append({"role": "user", "content": initial_prompt})
             except Exception:
                 pass
             # initial prompt recorded locally (no persistent brain)
 
-            turns = cfg['turns']; delay = cfg['delay']
-            a_url = cfg['a_url']; b_url = cfg['b_url']
-            a_model = cfg['a_model']; b_model = cfg['b_model']
+            turns = cfg["turns"]
+            delay = cfg["delay"]
+            a_url = cfg["a_url"]
+            b_url = cfg["b_url"]
+            a_model = cfg["a_model"]
+            b_model = cfg["b_model"]
 
             log_file = None
-            if cfg.get('log') and cfg.get('log_path'):
-                try: log_file = open(cfg.get('log_path'), 'a', encoding='utf-8')
-                except Exception: log_file = None
+            if cfg.get("log") and cfg.get("log_path"):
+                try:
+                    log_file = open(cfg.get("log_path"), "a", encoding="utf-8")
+                except Exception:
+                    log_file = None
 
             def ts():
                 from datetime import datetime
-                return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+                return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             def trunc(text: str, agent: str) -> str:
-                if not text: return ''
+                if not text:
+                    return ""
                 t = text.strip()
-                maxc = cfg.get('max_chars_a') if agent == 'a' else cfg.get('max_chars_b')
+                maxc = cfg.get("max_chars_a") if agent == "a" else cfg.get("max_chars_b")
                 import re
+
                 # Short-turn: prefer the first full sentence. If the first sentence exists, return it whole
-                if cfg.get('short_turn'):
+                if cfg.get("short_turn"):
                     m = re.search(r"(.+?[.!?])(\s|$)", t, re.S)
                     if m:
                         s = m.group(1).strip()
@@ -1929,21 +2407,21 @@ class OllamaGUI:
                             return s
                         return s
                     else:
-                        parts = re.split(r'[,;:\\-]\s*', t, maxsplit=1)
+                        parts = re.split(r"[,;:\\-]\s*", t, maxsplit=1)
                         s = parts[0].strip()
                         if maxc and maxc > 0 and len(s) > maxc:
                             return s
-                        if not s.endswith(('.', '!', '?')):
-                            s = s.rstrip(' ,;:') + '…'
+                        if not s.endswith((".", "!", "?")):
+                            s = s.rstrip(" ,;:") + "…"
                         return s
 
                 # Non-short-turn: if we must truncate, cut at the last sentence boundary within the limit
                 if maxc and maxc > 0 and len(t) > maxc:
                     snippet = t[:maxc]
                     # look for the last sentence terminator
-                    last_pos = max(snippet.rfind('.'), snippet.rfind('!'), snippet.rfind('?'))
+                    last_pos = max(snippet.rfind("."), snippet.rfind("!"), snippet.rfind("?"))
                     if last_pos != -1 and last_pos > 0:
-                        s = snippet[:last_pos+1].strip()
+                        s = snippet[: last_pos + 1].strip()
                         return s
                     # fallback: try to return the first full sentence from the whole text
                     m2 = re.search(r"(.+?[.!?])(\s|$)", t, re.S)
@@ -1951,16 +2429,17 @@ class OllamaGUI:
                         return m2.group(1).strip()
                     # last resort: truncate and append ellipsis
                     s = snippet.strip()
-                    if not s.endswith(('.', '!', '?')):
-                        s = s.rstrip(' ,;:') + '…'
+                    if not s.endswith((".", "!", "?")):
+                        s = s.rstrip(" ,;:") + "…"
                     return s
 
                 return t
 
             def dedupe_sentences(text: str) -> str:
                 import re
+
                 if not text:
-                    return ''
+                    return ""
                 # Split into sentence-like chunks (keep trailing punctuation)
                 parts = re.findall(r"[^.!?\n]+[\.!?…]?", text, flags=re.S)
                 if not parts:
@@ -1976,13 +2455,12 @@ class OllamaGUI:
                         continue
                     out.append(s)
                     prev = s
-                return ' '.join(out).strip()
-
+                return " ".join(out).strip()
 
             for i in range(turns):
                 if stop_event.is_set():
                     break
-                out_queue.put(('status', f'Turn {i+1}/{turns}'))
+                out_queue.put(("status", f"Turn {i + 1}/{turns}"))
 
                 # check for any injected user messages and append them to Agent B's message queue
                 try:
@@ -1993,62 +2471,66 @@ class OllamaGUI:
                             if isinstance(um, str) and um.strip():
                                 # Broadcast injected user message to both agents so both will answer
                                 try:
-                                    messages_b.append({'role': 'user', 'content': um.strip()})
+                                    messages_b.append({"role": "user", "content": um.strip()})
                                 except Exception:
                                     pass
                                 try:
-                                    messages_a.append({'role': 'user', 'content': um.strip()})
+                                    messages_a.append({"role": "user", "content": um.strip()})
                                 except Exception:
                                     pass
-                                try: out_queue.put(('user', um.strip()))
-                                except Exception: pass
+                                try:
+                                    out_queue.put(("user", um.strip()))
+                                except Exception:
+                                    pass
                             # continue draining any additional messages
                 except queue.Empty:
                     pass
 
                 # pass runtime options for Agent B
                 b_runtime = {
-                    'temperature': float(cfg.get('b_runtime', {}).get('temperature', 0.7)),
-                    'max_tokens': int(cfg.get('b_runtime', {}).get('max_tokens', 512)),
-                    'top_p': float(cfg.get('b_runtime', {}).get('top_p', 1.0)),
-                    'stop': cfg.get('b_runtime', {}).get('stop') or None,
-                    'stream': bool(cfg.get('b_runtime', {}).get('stream', False)),
+                    "temperature": float(cfg.get("b_runtime", {}).get("temperature", 0.7)),
+                    "max_tokens": int(cfg.get("b_runtime", {}).get("max_tokens", 512)),
+                    "top_p": float(cfg.get("b_runtime", {}).get("top_p", 1.0)),
+                    "stop": cfg.get("b_runtime", {}).get("stop") or None,
+                    "stream": bool(cfg.get("b_runtime", {}).get("stream", False)),
                 }
                 resp_b = self._call_ollama_with_timeout(b_url, b_model, messages_b, runtime_options=b_runtime, timeout=20)
-                content_b = trunc(resp_b.get('content', ''), 'b')
+                content_b = trunc(resp_b.get("content", ""), "b")
                 content_b = dedupe_sentences(content_b)
-                out_queue.put(('b', content_b))
+                out_queue.put(("b", content_b))
                 # brain logging removed
                 if log_file:
                     try:
-                        log_file.write(f"[{ts()}] B: {content_b}\n"); log_file.flush()
+                        log_file.write(f"[{ts()}] B: {content_b}\n")
+                        log_file.flush()
                     except Exception:
                         pass
-                messages_b.append({'role': 'assistant', 'content': content_b})
-                messages_a.append({'role': 'user', 'content': content_b})
+                messages_b.append({"role": "assistant", "content": content_b})
+                messages_a.append({"role": "user", "content": content_b})
 
                 if stop_event.is_set():
                     break
 
                 a_runtime = {
-                    'temperature': float(cfg.get('a_runtime', {}).get('temperature', 0.7)),
-                    'max_tokens': int(cfg.get('a_runtime', {}).get('max_tokens', 512)),
-                    'top_p': float(cfg.get('a_runtime', {}).get('top_p', 1.0)),
-                    'stop': cfg.get('a_runtime', {}).get('stop') or None,
-                    'stream': bool(cfg.get('a_runtime', {}).get('stream', False)),
+                    "temperature": float(cfg.get("a_runtime", {}).get("temperature", 0.7)),
+                    "max_tokens": int(cfg.get("a_runtime", {}).get("max_tokens", 512)),
+                    "top_p": float(cfg.get("a_runtime", {}).get("top_p", 1.0)),
+                    "stop": cfg.get("a_runtime", {}).get("stop") or None,
+                    "stream": bool(cfg.get("a_runtime", {}).get("stream", False)),
                 }
                 resp_a = self._call_ollama_with_timeout(a_url, a_model, messages_a, runtime_options=a_runtime, timeout=20)
-                content_a = trunc(resp_a.get('content', ''), 'a')
+                content_a = trunc(resp_a.get("content", ""), "a")
                 content_a = dedupe_sentences(content_a)
-                out_queue.put(('a', content_a))
+                out_queue.put(("a", content_a))
                 # brain logging removed
                 if log_file:
                     try:
-                        log_file.write(f"[{ts()}] A: {content_a}\n"); log_file.flush()
+                        log_file.write(f"[{ts()}] A: {content_a}\n")
+                        log_file.flush()
                     except Exception:
                         pass
-                messages_a.append({'role': 'assistant', 'content': content_a})
-                messages_b.append({'role': 'user', 'content': content_a})
+                messages_a.append({"role": "assistant", "content": content_a})
+                messages_b.append({"role": "user", "content": content_a})
 
                 # Only sleep if not stopping
                 if stop_event.is_set():
@@ -2058,19 +2540,27 @@ class OllamaGUI:
         except Exception as e:
             try:
                 import traceback
+
                 tb = traceback.format_exc()
-                with open('thread_error.log', 'a', encoding='utf-8') as ef:
-                    ef.write(tb + '\n')
-                try: out_queue.put(('status', f'Error: {e} (see thread_error.log)'))
-                except Exception: pass
+                with open("thread_error.log", "a", encoding="utf-8") as ef:
+                    ef.write(tb + "\n")
+                try:
+                    out_queue.put(("status", f"Error: {e} (see thread_error.log)"))
+                except Exception:
+                    pass
             except Exception:
-                try: out_queue.put(('status', f'Error: {e}'))
-                except Exception: pass
+                try:
+                    out_queue.put(("status", f"Error: {e}"))
+                except Exception:
+                    pass
         finally:
             try:
-                if log_file: log_file.close()
-            except Exception: pass
-            try: out_queue.put(('done', ''))
+                if log_file:
+                    log_file.close()
+            except Exception:
+                pass
+            try:
+                out_queue.put(("done", ""))
             except Exception:
                 pass
 
@@ -2096,5 +2586,5 @@ def main():
     root.mainloop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
