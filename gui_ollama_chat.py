@@ -337,6 +337,11 @@ class OllamaGUI:
         # --- Chat Controls ---
         controls_frame = ttk.Frame(self.chat_tab)
         controls_frame.pack(fill='x', padx=6, pady=(0,6))
+        # Sender name for user messages (optional)
+        ttk.Label(controls_frame, text='From').pack(side='left', padx=(0,4))
+        self.sender_name = ttk.Entry(controls_frame, width=12)
+        self.sender_name.pack(side='left', padx=(0,6))
+
         self.user_input = ttk.Entry(controls_frame)
         self.user_input.pack(side='left', fill='x', expand=True, padx=(0,6))
         try:
@@ -445,7 +450,6 @@ class OllamaGUI:
         ctrl_frame.pack(fill='x', padx=6, pady=(0,6))
         ttk.Label(ctrl_frame, text='Topic').grid(row=0, column=0, sticky='w')
         self.topic = ttk.Entry(ctrl_frame, width=40)
-        self.topic.insert(0, 'the benefits of remote work')
         self.topic.grid(row=0, column=1, sticky='w')
         self.clear_topic_btn = ttk.Button(ctrl_frame, text='Clear Topic', command=lambda: self.topic.delete(0, 'end'))
         self.clear_topic_btn.grid(row=0, column=1, sticky='e', padx=(0, 2))
@@ -1196,8 +1200,9 @@ class OllamaGUI:
                         pass
                 elif kind == 'user':
                     try:
+                        name = (self.sender_name.get().strip() if hasattr(self, 'sender_name') else '') or 'You'
                         self.chat_text.config(state='normal')
-                        self.chat_text.insert('end', f"You: {formatted}\n\n")
+                        self.chat_text.insert('end', f"{name}: {formatted}\n\n")
                         self.chat_text.see('end')
                         self.chat_text.config(state='disabled')
                     except Exception:
