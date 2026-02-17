@@ -56,95 +56,97 @@ class Tooltip:
 class OllamaGUI:
     """Main GUI class for Ollama two-agent chat."""
     def _on_send(self):
-        # If there is text in the user input, use it as the greeting for the conversation.
+        # Read user input
         try:
             txt = self.user_input.get().strip()
         except Exception:
             txt = ''
-        # Lightweight debug log to trace why input becomes greeting vs injected
+
+        # Log the call
         try:
             with open('send_debug.log', 'a', encoding='utf-8') as df:
                 from datetime import datetime
                 df.write(f"[{datetime.now().isoformat()}] _on_send called; txt={repr(txt)}\n")
         except Exception:
             pass
+
         if txt:
-            # If a conversation is running, send this as an injected user message
+            # Determine whether a conversation thread is running
+            thread_alive = False
             try:
+                thread_alive = bool(getattr(self, 'thread', None) and getattr(self, 'thread').is_alive())
+            except Exception:
                 thread_alive = False
-                try:
-                    thread_alive = bool(getattr(self, 'thread', None) and getattr(self, 'thread').is_alive())
-                except Exception:
-                    thread_alive = False
-                try:
-                    with open('send_debug.log', 'a', encoding='utf-8') as df:
-                        from datetime import datetime
-                        df.write(f"[{datetime.now().isoformat()}] thread_alive={thread_alive}\n")
-                except Exception:
-                    pass
-                # If the Start button is disabled, treat the conversation as running (covers race conditions)
-                try:
-                    if not thread_alive and hasattr(self, 'start_btn'):
-                        try:
-                            thread_alive = str(self.start_btn['state']).lower() == 'disabled'
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-                if thread_alive:
-                    # ensure inbound queue exists
+            try:
+                if not thread_alive and hasattr(self, 'start_btn'):
                     try:
-                        if not hasattr(self, 'to_worker_queue') or getattr(self, 'to_worker_queue', None) is None:
-                            self.to_worker_queue = queue.Queue()
+                        thread_alive = str(self.start_btn['state']).lower() == 'disabled'
                     except Exception:
                         pass
-                    try:
-                        self.to_worker_queue.put(txt)
-                        try: self.queue.put(('user', txt))
-                        except Exception: pass
-                        try:
-                            with open('send_debug.log', 'a', encoding='utf-8') as df:
-                                from datetime import datetime
-                                df.write(f"[{datetime.now().isoformat()}] action=injected txt={repr(txt)}\n")
-                        except Exception:
-                            pass
-                    except Exception:
-                        try:
-                            with open('send_debug.log', 'a', encoding='utf-8') as df:
-                                from datetime import datetime
-                                df.write(f"[{datetime.now().isoformat()}] action=injected_failed txt={repr(txt)}\n")
-                        except Exception:
-                            pass
-                    try: self.user_input.delete(0, tk.END)
-                    except Exception: pass
-                    return
             except Exception:
                 pass
-            try:
-                # Start a conversation using this text as the initial greeting/prompt
+
+            if thread_alive:
+                # Inject message into running conversation
                 try:
-                    with open('send_debug.log', 'a', encoding='utf-8') as df:
-                        from datetime import datetime
-                        df.write(f"[{datetime.now().isoformat()}] action=start_with_greeting txt={repr(txt)}\n")
-                except Exception:
-                    pass
-                try:
-                    # Display the user's message in the chat with their sender name
+                    if not hasattr(self, 'to_worker_queue') or getattr(self, 'to_worker_queue', None) is None:
+                        self.to_worker_queue = queue.Queue()
+                    self.to_worker_queue.put(txt)
                     try:
                         self.queue.put(('user', txt))
                     except Exception:
                         pass
-                    # Then start the conversation using this text as the initial greeting/prompt
                     try:
-                        self.start(greeting=txt)
+                        with open('send_debug.log', 'a', encoding='utf-8') as df:
+                            from datetime import datetime
+                            df.write(f"[{datetime.now().isoformat()}] action=injected txt={repr(txt)}\n")
                     except Exception:
-                        self.start()
-            finally:
-                try: self.user_input.delete(0, tk.END)
-                except Exception: pass
+                        pass
+                except Exception:
+                    try:
+                        with open('send_debug.log', 'a', encoding='utf-8') as df:
+                            from datetime import datetime
+                            df.write(f"[{datetime.now().isoformat()}] action=injected_failed txt={repr(txt)}\n")
+                    except Exception:
+                        pass
+                try:
+                    self.user_input.delete(0, tk.END)
+                except Exception:
+                    pass
+                return
+
+            # No running thread: start a new conversation with this greeting
+            try:
+                with open('send_debug.log', 'a', encoding='utf-8') as df:
+                    from datetime import datetime
+                    df.write(f"[{datetime.now().isoformat()}] action=start_with_greeting txt={repr(txt)}\n")
+            except Exception:
+                pass
+
+            try:
+                self.queue.put(('user', txt))
+            except Exception:
+                pass
+
+            try:
+                self.start(greeting=txt)
+            except Exception:
+                try:
+                    self.start()
+                except Exception:
+                    pass
+
+            try:
+                self.user_input.delete(0, tk.END)
+            except Exception:
+                pass
             return
+
         # Fallback: just start if no user input
-        self.start()
+        try:
+            self.start()
+        except Exception:
+            pass
 
     def _on_stop(self):
         self.stop()
@@ -1763,16 +1765,12 @@ class OllamaGUI:
                             if isinstance(um, str) and um.strip():
                                 # Broadcast injected user message to both agents so both will answer
                                 try:
-                                    sender = (self.sender_name.get().strip() if hasattr(self, 'sender_name') else '') or 'You'
-                                except Exception:
-                                    sender = 'You'
-                                content_for_agents = f"{sender}: {um.strip()}"
-                                try:
-                                    messages_b.append({'role': 'user', 'content': content_for_agents})
+                                    # Send raw message text to agents (no sender prefix)
+                                    messages_b.append({'role': 'user', 'content': um.strip()})
                                 except Exception:
                                     pass
                                 try:
-                                    messages_a.append({'role': 'user', 'content': content_for_agents})
+                                    messages_a.append({'role': 'user', 'content': um.strip()})
                                 except Exception:
                                     pass
                                 try: out_queue.put(('user', um.strip()))
