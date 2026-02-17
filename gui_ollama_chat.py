@@ -1246,6 +1246,7 @@ class OllamaGUI:
             'delay': float(self.delay.get()),
             'humanize': bool(self.humanize_var.get()),
             'greeting': (greeting or (self.greeting.get().strip() if hasattr(self, 'greeting') else '') ) or None,
+            'user_name': (self.sender_name.get().strip() if hasattr(self, 'sender_name') else '') or None,
             'max_chars_a': int(self.max_chars_a.get()),
             'max_chars_b': int(self.max_chars_b.get()),
             'short_turn': bool(self.short_turn_var.get()),
@@ -1690,8 +1691,11 @@ class OllamaGUI:
                 "Important: In every reply, explicitly reference the discussion topic and keep responses focused on it. "
                 "Begin each response by briefly restating the topic and avoid unrelated tangents."
             )
-            sys_a = f"{instruction} You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}".strip()
-            sys_b = f"{instruction} You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}".strip()
+            user_name = cfg.get('user_name')
+            user_note = f" The human user's name is {user_name}." if user_name else ''
+
+            sys_a = f"{instruction} You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}.{user_note}".strip()
+            sys_b = f"{instruction} You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}.{user_note}".strip()
 
             messages_a = [{'role': 'system', 'content': sys_a}]
             messages_b = [{'role': 'system', 'content': sys_b}]
