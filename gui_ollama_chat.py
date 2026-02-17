@@ -93,10 +93,6 @@ class OllamaGUI:
                         self.to_worker_queue = queue.Queue()
                     self.to_worker_queue.put(txt)
                     try:
-                        self.queue.put(('user', txt))
-                    except Exception:
-                        pass
-                    try:
                         with open('send_debug.log', 'a', encoding='utf-8') as df:
                             from datetime import datetime
                             df.write(f"[{datetime.now().isoformat()}] action=injected txt={repr(txt)}\n")
