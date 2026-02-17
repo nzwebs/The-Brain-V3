@@ -350,15 +350,6 @@ class OllamaGUI:
         self.clear_btn = ttk.Button(controls_frame, text='Clear Chat', command=self._clear_chat)
         self.clear_btn.pack(side='left', padx=(6,0))
 
-        # Chat-tab compact connection indicators (Agent A / Agent B)
-        models_frame = ttk.Frame(controls_frame)
-        models_frame.pack(side='right', padx=(6,0))
-        ttk.Label(models_frame, text='A').grid(row=0, column=0, sticky='e')
-        self.a_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
-        self.a_status_dot.grid(row=0, column=1, padx=(6,8))
-        ttk.Label(models_frame, text='B').grid(row=1, column=0, sticky='e')
-        self.b_status_dot = ttk.Label(models_frame, text='●', foreground='gray')
-        self.b_status_dot.grid(row=1, column=1, padx=(6,8))
 
         # --- Status Bar with Turn Count ---
         self.status_var = tk.StringVar(value='Ready.')
