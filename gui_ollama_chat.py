@@ -1924,7 +1924,24 @@ class OllamaGUI:
                     self.chat_text.see("end")
                     self.chat_text.config(state="disabled")
                 elif kind == "status":
-                    self.status_var.set(formatted)
+                    # Preserve endpoint info if present; status var is the persistent status line
+                    try:
+                        # If last endpoint label exists, include it in the status line
+                        ep = None
+                        if hasattr(self, "last_endpoint_var") and self.last_endpoint_var is not None:
+                            try:
+                                ep = self.last_endpoint_var.get()
+                            except Exception:
+                                ep = None
+                        if ep:
+                            self.status_var.set(f"{formatted}    [{ep}]")
+                        else:
+                            self.status_var.set(formatted)
+                    except Exception:
+                        try:
+                            self.status_var.set(formatted)
+                        except Exception:
+                            pass
                     try:
                         m = re.search(r"Turn\s*(\d+)\s*/\s*(\d+)", formatted)
                         if m:
