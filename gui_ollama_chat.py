@@ -129,9 +129,16 @@ class OllamaGUI:
                 except Exception:
                     pass
                 try:
-                    self.start(greeting=txt)
-                except Exception:
-                    self.start()
+                    # Display the user's message in the chat with their sender name
+                    try:
+                        self.queue.put(('user', txt))
+                    except Exception:
+                        pass
+                    # Then start the conversation using this text as the initial greeting/prompt
+                    try:
+                        self.start(greeting=txt)
+                    except Exception:
+                        self.start()
             finally:
                 try: self.user_input.delete(0, tk.END)
                 except Exception: pass
