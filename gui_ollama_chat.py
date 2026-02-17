@@ -1756,11 +1756,16 @@ class OllamaGUI:
                             if isinstance(um, str) and um.strip():
                                 # Broadcast injected user message to both agents so both will answer
                                 try:
-                                    messages_b.append({'role': 'user', 'content': um.strip()})
+                                    sender = (self.sender_name.get().strip() if hasattr(self, 'sender_name') else '') or 'You'
+                                except Exception:
+                                    sender = 'You'
+                                content_for_agents = f"{sender}: {um.strip()}"
+                                try:
+                                    messages_b.append({'role': 'user', 'content': content_for_agents})
                                 except Exception:
                                     pass
                                 try:
-                                    messages_a.append({'role': 'user', 'content': um.strip()})
+                                    messages_a.append({'role': 'user', 'content': content_for_agents})
                                 except Exception:
                                     pass
                                 try: out_queue.put(('user', um.strip()))
