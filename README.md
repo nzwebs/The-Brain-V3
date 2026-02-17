@@ -1,4 +1,4 @@
-# Smoke tests: [![Smoke tests](https://github.com/nzwebs/The-Brain-V3/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/nzwebs/The-Brain-V3/actions/workflows/smoke-tests.yml)
+# Smoke tests: [![Smoke tests](https://github.com/REDACTED/REPO/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/REDACTED/REPO/actions/workflows/smoke-tests.yml)
 
 # Recent Improvements
 
