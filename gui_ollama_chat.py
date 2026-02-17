@@ -250,6 +250,15 @@ class OllamaGUI:
                 brain['facts'] = facts
                 self._brain = brain
                 self._save_brain(brain)
+                # If a conversation is running, broadcast memory summary so agents update immediately
+                try:
+                    if getattr(self, 'thread', None) and getattr(self.thread, 'is_alive', lambda: False)():
+                        try:
+                            self._broadcast_memory_update()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -259,10 +268,85 @@ class OllamaGUI:
             facts = brain.get('facts', [])[-max_items:]
             if not facts:
                 return ''
-            parts = [f"{f.get('text')}" for f in facts]
+            parts = [self._format_fact(f) for f in facts]
             return 'Known: ' + '; '.join(parts)
         except Exception:
             return ''
+
+    def _format_fact(self, f):
+        try:
+            kind = (f.get('kind') or '').lower()
+            val = (f.get('value') or f.get('text') or '').strip()
+            if not val:
+                return (f.get('text') or '').strip()
+            if kind == 'name':
+                return f"Name: {val}"
+            if kind == 'location':
+                return f"Lives in {val}"
+            if kind == 'job':
+                return f"Works as {val}"
+            if kind == 'preference':
+                return f"Likes {val}"
+            # fallback: capitalize first char
+            return val[0].upper() + val[1:]
+        except Exception:
+            try:
+                return f.get('text','')
+            except Exception:
+                return ''
+
+    def _get_relevant_facts(self, context_text, max_items=4):
+        """Return up to max_items most relevant fact texts for the given context_text.
+        Simple keyword overlap scoring for Stage 1.
+        """
+        try:
+            if not context_text:
+                return []
+            brain = getattr(self, '_brain', None) or self._load_brain()
+            facts = brain.get('facts', [])
+            if not facts:
+                return []
+            import re
+            ctx = re.findall(r"[A-Za-z0-9']+", context_text.lower())
+            ctx_set = set(w for w in ctx if len(w) > 2)
+            scored = []
+            for f in facts:
+                text = (f.get('text') or '').lower()
+                # score by token overlap
+                tokens = re.findall(r"[A-Za-z0-9']+", text)
+                score = sum(1 for t in tokens if t in ctx_set)
+                # small boost if exact substring match
+                if any(k in text for k in ctx_set):
+                    score += 1
+                if score > 0:
+                    scored.append((score, f))
+            if not scored:
+                return []
+            scored.sort(key=lambda x: x[0], reverse=True)
+            out = [self._format_fact(t) for s, t in scored[:max_items]]
+            return out
+        except Exception:
+            return []
+
+    def _broadcast_memory_update(self):
+        # Put a memory-update object onto the in_queue so the running conversation can ingest it
+        try:
+            summary = self._get_memory_summary()
+            if not summary:
+                return
+            confirm_flag = False
+            try:
+                confirm_flag = bool(getattr(self, 'ask_confirm_memory', None) and self.ask_confirm_memory.get())
+            except Exception:
+                confirm_flag = False
+            payload = {'_memory_update': True, 'summary': summary, 'confirm': confirm_flag}
+            if hasattr(self, 'to_worker_queue') and getattr(self, 'to_worker_queue', None) is not None:
+                try:
+                    self.to_worker_queue.put(payload)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _show_memory(self):
         try:
@@ -272,7 +356,15 @@ class OllamaGUI:
             w.title('Brain Memory')
             txt = tk.Text(w, width=80, height=20)
             txt.pack(fill='both', expand=True)
-            txt.insert('end', json.dumps(brain, indent=2, ensure_ascii=False))
+            if not facts:
+                txt.insert('end', '(no stored facts)')
+            else:
+                for f in facts:
+                    try:
+                        txt.insert('end', self._format_fact(f) + '\n')
+                    except Exception:
+                        try: txt.insert('end', f.get('text','') + '\n')
+                        except Exception: pass
             txt.config(state='disabled')
             btn = ttk.Button(w, text='Close', command=w.destroy)
             btn.pack(pady=6)
@@ -466,6 +558,13 @@ class OllamaGUI:
             mem_chk = ttk.Checkbutton(controls_frame, text='Enable Memory', variable=self.memory_enabled)
             mem_chk.pack(side='left', padx=(6,4))
             Tooltip(mem_chk, 'When enabled, simple facts from your messages are stored in a local brain.')
+        except Exception:
+            pass
+        try:
+            self.ask_confirm_memory = tk.BooleanVar(value=True)
+            ask_chk = ttk.Checkbutton(controls_frame, text='Ask to confirm', variable=self.ask_confirm_memory)
+            ask_chk.pack(side='left', padx=(4,2))
+            Tooltip(ask_chk, 'When enabled, agents will ask the user to confirm newly recorded facts.')
         except Exception:
             pass
         try:
@@ -1899,20 +1998,45 @@ class OllamaGUI:
                     in_q = in_queue if in_queue is not None else None
                     if in_q is not None:
                         while True:
-                            um = in_q.get_nowait()
-                            if isinstance(um, str) and um.strip():
-                                # Broadcast injected user message to both agents so both will answer
-                                try:
-                                    # Send raw message text to agents (no sender prefix)
-                                    messages_b.append({'role': 'user', 'content': um.strip()})
-                                except Exception:
-                                    pass
-                                try:
-                                    messages_a.append({'role': 'user', 'content': um.strip()})
-                                except Exception:
-                                    pass
-                                try: out_queue.put(('user', um.strip()))
-                                except Exception: pass
+                                um = in_q.get_nowait()
+                                # Support injected user messages (str) and memory-update payloads (dict with _memory_update)
+                                if isinstance(um, dict) and um.get('_memory_update'):
+                                    try:
+                                        note = f"[Memory Update] {um.get('summary','')}"
+                                        # Inject as a system note so agents can incorporate it
+                                        messages_a.append({'role': 'system', 'content': note})
+                                        messages_b.append({'role': 'system', 'content': note})
+                                        # If confirm requested, enqueue a user prompt so agents will ask the human
+                                        if um.get('confirm'):
+                                            try:
+                                                confirm_msg = f"Please confirm the following facts about the human: {um.get('summary','')}. Are these correct?"
+                                                messages_a.append({'role': 'user', 'content': confirm_msg})
+                                                messages_b.append({'role': 'user', 'content': confirm_msg})
+                                                try: out_queue.put(('user', confirm_msg))
+                                                except Exception: pass
+                                                try: out_queue.put(('status', 'Memory updated and confirmation requested.'))
+                                                except Exception: pass
+                                            except Exception:
+                                                pass
+                                        else:
+                                            try: out_queue.put(('status', 'Memory updated for agents.'))
+                                            except Exception: pass
+                                    except Exception:
+                                        pass
+                                    continue
+                                if isinstance(um, str) and um.strip():
+                                    # Broadcast injected user message to both agents so both will answer
+                                    try:
+                                        # Send raw message text to agents (no sender prefix)
+                                        messages_b.append({'role': 'user', 'content': um.strip()})
+                                    except Exception:
+                                        pass
+                                    try:
+                                        messages_a.append({'role': 'user', 'content': um.strip()})
+                                    except Exception:
+                                        pass
+                                    try: out_queue.put(('user', um.strip()))
+                                    except Exception: pass
                             # continue draining any additional messages
                 except queue.Empty:
                     pass
@@ -1925,7 +2049,27 @@ class OllamaGUI:
                     'stop': cfg.get('b_runtime', {}).get('stop') or None,
                     'stream': bool(cfg.get('b_runtime', {}).get('stream', False)),
                 }
-                resp_b = self._call_ollama_with_timeout(b_url, b_model, messages_b, runtime_options=b_runtime, timeout=20)
+                # Per-turn relevance: pick a few facts relevant to recent context and include as a short system note
+                try:
+                    context_for_retrieval = topic or ''
+                    # prefer the most recent user message if present
+                    for m in reversed(messages_b):
+                        if m.get('role') == 'user' and m.get('content'):
+                            context_for_retrieval = m.get('content'); break
+                except Exception:
+                    context_for_retrieval = topic or ''
+                relevant = []
+                try:
+                    relevant = self._get_relevant_facts(context_for_retrieval, max_items=4)
+                except Exception:
+                    relevant = []
+                if relevant:
+                    mem_note = 'Relevant user facts: ' + '; '.join(relevant)
+                    messages_b_call = list(messages_b) + [{'role': 'system', 'content': mem_note}]
+                else:
+                    messages_b_call = messages_b
+
+                resp_b = self._call_ollama_with_timeout(b_url, b_model, messages_b_call, runtime_options=b_runtime, timeout=20)
                 content_b = trunc(resp_b.get('content', ''), 'b')
                 out_queue.put(('b', content_b))
                 # brain logging removed
@@ -1947,7 +2091,25 @@ class OllamaGUI:
                     'stop': cfg.get('a_runtime', {}).get('stop') or None,
                     'stream': bool(cfg.get('a_runtime', {}).get('stream', False)),
                 }
-                resp_a = self._call_ollama_with_timeout(a_url, a_model, messages_a, runtime_options=a_runtime, timeout=20)
+                try:
+                    context_for_retrieval = topic or ''
+                    for m in reversed(messages_a):
+                        if m.get('role') == 'user' and m.get('content'):
+                            context_for_retrieval = m.get('content'); break
+                except Exception:
+                    context_for_retrieval = topic or ''
+                relevant = []
+                try:
+                    relevant = self._get_relevant_facts(context_for_retrieval, max_items=4)
+                except Exception:
+                    relevant = []
+                if relevant:
+                    mem_note = 'Relevant user facts: ' + '; '.join(relevant)
+                    messages_a_call = list(messages_a) + [{'role': 'system', 'content': mem_note}]
+                else:
+                    messages_a_call = messages_a
+
+                resp_a = self._call_ollama_with_timeout(a_url, a_model, messages_a_call, runtime_options=a_runtime, timeout=20)
                 content_a = trunc(resp_a.get('content', ''), 'a')
                 out_queue.put(('a', content_a))
                 # brain logging removed
