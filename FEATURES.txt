@@ -1,0 +1,80 @@
+Ollama Two-Agent Chat - Feature List
+
+Overview
+- Two-agent chat interface (Agent A / Agent B) with turn-based conversation.
+- Tkinter GUI with notebook tabs: Chat and Settings.
+
+Agent & Model Management
+- Per-agent server URL (combobox) with recent-URL management and "Manage" dialog.
+- Per-agent model selection (Chat-tab combobox) and Settings tab model list (Listbox).
+- Model discovery: queries server endpoints (/v1/models, /models, /api/models) and parses JSON/text.
+- Model status indicators (live checks) for server and model availability.
+- Model management actions in Settings: Refresh, Pull → Agent, Pull → Both, Remove, Copy All.
+- Pull progress UI with progressbar, status label, cancel pull support.
+- Model details pane showing model metadata and recent model-fetch status log.
+- Placeholder messages when no models fetched.
+
+Runtime & Conversation Controls
+- Start/Stop conversation control with a threaded conversation loop.
+- Run-time options per agent: Temperature, Max Tokens, Top-p, Stop tokens, Stream toggle.
+- Humanize option and per-turn Delay setting.
+- Turn count control and display (turn_count_var in status bar).
+- Short-turn mode to truncate/shorten agent replies.
+- Greeting and Topic fields; user input entry + Send button.
+- Supports injecting messages while a conversation thread is running (inbound queue).
+
+Personas & Presets
+- Persona text field per agent and persona "presets" loaded from personas.json.
+- Apply preset to populate age, quirk, and persona prompt.
+- Persona file selection support (load persona text from files).
+
+Formatting & Output
+- Chat output formatting options: Plain, Markdown, Raw.
+- Scrolled chat output widget with agent name labels and auto-scroll.
+- Clear Chat button and Save & Exit.
+
+Configuration & Persistence
+- Persistent configuration saved to `gui_config.json`:
+  - Agent URLs, selected models, persona settings, recent URLs, runtime settings, persona_presets, a_api_path/b_api_path, etc.
+- Load/save config routines with defensive UI updates.
+- Reset Defaults button to restore typical URLs/models/persona values.
+
+Endpoint Handling & Robustness
+- Per-agent API-path override entries (Settings) to append alternative API paths (e.g., /api/chat, /v1/completions).
+- `multi_ollama_chat.chat_with_ollama()` updated to:
+  - Prefer `ollama.Client` when available.
+  - Fall back to multiple HTTP endpoints when client unavailable.
+  - Normalize returned responses and include `endpoint` used in responses for visibility.
+- Last-used endpoint label shown in Chat area and included in status line when present.
+- Endpoint usage logged to `gui_debug.log`.
+- Model-fetch and debug logs: `model_fetch_debug.log`, `gui_debug.log`, `send_debug.log`.
+
+UI & UX
+- Tooltips for many controls to explain options.
+- Theme application (tries Vista/XPNative/Clam) and consistent widget styles.
+- Notebook tab-change handler to refresh models when Settings tab is opened.
+- Placeholders and friendly messages when operations fail.
+
+Networking & Error Handling
+- TCP probe for quick host/port reachability before HTTP requests.
+- Requests usage with retries/backoff and timeout handling when fetching models or calling endpoints.
+- Defensive exception handling across UI threads; queue-based main-thread updates.
+- Logs detailed network and parsing errors to help debugging.
+
+Developer / Testing Utilities
+- Test scripts in `tools/` (e.g., `check_models_populate.py`, `probe_models.py`) used to validate model discovery and GUI population.
+- Automated GUI test snippets used during development to exercise send/receive.
+
+Notes / Known Behavior
+- Headless/non-interactive runs produce Tk threading warnings (mainloop requirements) — GUI should be run normally for full behavior.
+- Network timeouts can occur if local Ollama is not running; per-agent API-path overrides and fallback endpoints mitigate incompatibilities between Ollama variants.
+
+Files of Interest
+- `gui_ollama_chat.py` — main GUI and settings logic.
+- `multi_ollama_chat.py` — endpoint calling and fallback logic.
+- `gui_config.json` — persisted settings file.
+- `personas.json` — persona presets.
+- `gui_debug.log`, `model_fetch_debug.log`, `send_debug.log` — runtime logs.
+- `tools/` — helper test scripts.
+
+If you want this saved as Markdown or want the features grouped into a short user guide and quick-start steps, I can regenerate the file accordingly.
