@@ -39,18 +39,24 @@ AGENT_B_NAME = os.getenv("AGENT_B_NAME", "Agent_B")
 
 def chat_with_ollama(client_url, model, messages, timeout=30, runtime_options=None):
     """Sends messages to an Ollama server and returns a dict with 'content'."""
-    client = ollama.Client(host=client_url)
+    # First try using the installed `ollama` python client if available.
     try:
-        # Try to pass runtime options (temperature, max_tokens, top_p, stop, stream, etc.)
-        if runtime_options and isinstance(runtime_options, dict):
-            try:
-                response = client.chat(model=model, messages=messages, **runtime_options)
-            except TypeError:
+        client = ollama.Client(host=client_url)
+        try:
+            if runtime_options and isinstance(runtime_options, dict):
+                try:
+                    response = client.chat(model=model, messages=messages, **runtime_options)
+                except TypeError:
+                    response = client.chat(model=model, messages=messages)
+            else:
                 response = client.chat(model=model, messages=messages)
-        else:
-            response = client.chat(model=model, messages=messages)
-    except Exception as e:
-        return {"content": f"[ERROR calling {client_url}: {e}]"}
+            # Delegate to the normal response cleaning below
+            res_from_client = response
+        except Exception:
+            # Fall through to attempting HTTP endpoints below
+            res_from_client = None
+    except Exception:
+        res_from_client = None
 
     def extract_from_text(text: str) -> str:
         import re
@@ -110,17 +116,87 @@ def chat_with_ollama(client_url, model, messages, timeout=30, runtime_options=No
         except Exception:
             pass
         return s.strip()
+    # If the ollama client returned a response, prefer it
+    if res_from_client is not None:
+        response = res_from_client
+        if isinstance(response, dict):
+            if "message" in response:
+                msg = response["message"]
+                if isinstance(msg, dict):
+                    content = msg.get("content") or msg.get("text") or str(msg)
+                    return {"content": clean_content(extract_from_text(content))}
+                return {"content": clean_content(extract_from_text(str(msg)))}
+            if "content" in response:
+                return {"content": clean_content(extract_from_text(response["content"]))}
+        return {"content": clean_content(extract_from_text(str(response)))}
 
-    if isinstance(response, dict):
-        if "message" in response:
-            msg = response["message"]
-            if isinstance(msg, dict):
-                content = msg.get("content") or msg.get("text") or str(msg)
-                return {"content": clean_content(extract_from_text(content))}
-            return {"content": clean_content(extract_from_text(str(msg)))}
-        if "content" in response:
-            return {"content": clean_content(extract_from_text(response["content"]))}
-    return {"content": clean_content(extract_from_text(str(response)))}
+    # Fall back: try a set of likely HTTP endpoints directly (useful when different
+    # Ollama server variants expose alternate paths such as /api/chat or /v1/completions).
+    import requests
+
+    endpoints = [
+        "/api/chat",
+        "/api/generate",
+        "/v1/completions",
+        "/v1/generate",
+        "/v1/chat",
+    ]
+
+    # Helper to form a simple prompt from messages when needed
+    def _messages_to_prompt(msgs):
+        parts = []
+        for m in msgs:
+            try:
+                if isinstance(m, dict) and m.get("role") in ("user", "system"):
+                    parts.append(m.get("content", ""))
+                elif isinstance(m, str):
+                    parts.append(m)
+            except Exception:
+                continue
+        return "\n".join([p for p in parts if p])
+
+    prompt = _messages_to_prompt(messages)
+
+    for ep in endpoints:
+        url = client_url.rstrip("/") + ep
+        try:
+            if "chat" in ep:
+                payload = {"model": model, "messages": messages}
+            else:
+                payload = {"model": model, "prompt": prompt, "max_tokens": 512}
+            resp = requests.post(url, json=payload, timeout=timeout)
+            # Accept 200-299 as success
+            if 200 <= resp.status_code < 300:
+                # Try to decode JSON, otherwise treat as text stream
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {"content": resp.text}
+                # Normalize to the same shape as the ollama client
+                if isinstance(data, dict) and "choices" in data:
+                    # Common v1/completions style
+                    try:
+                        text = data["choices"][0].get("text")
+                        return {"content": clean_content(extract_from_text(text)), "endpoint": url}
+                    except Exception:
+                        return {"content": clean_content(extract_from_text(str(data))), "endpoint": url}
+                if isinstance(data, dict) and "message" in data:
+                    msg = data.get("message")
+                    if isinstance(msg, dict):
+                        c = msg.get("content") or msg.get("response") or msg.get("text")
+                        return {"content": clean_content(extract_from_text(c)), "endpoint": url}
+                if isinstance(data, dict) and "response" in data:
+                    return {"content": clean_content(extract_from_text(data.get("response"))), "endpoint": url}
+                if isinstance(data, dict) and "content" in data:
+                    return {"content": clean_content(extract_from_text(data.get("content"))), "endpoint": url}
+                # Fallback: return textual body
+                return {"content": clean_content(extract_from_text(str(data))), "endpoint": url}
+        except Exception as e:
+            # Try next endpoint
+            continue
+
+    # If nothing worked, return an error
+    return {"content": f"[ERROR calling {client_url}: no usable endpoint found]", "endpoint": None}
 
 
 def run_conversation(
