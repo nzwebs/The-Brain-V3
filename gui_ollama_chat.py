@@ -1708,7 +1708,8 @@ class OllamaGUI:
             else:
                 initial_prompt = f"Let's discuss {topic}. I think..."
 
-            out_queue.put(('b', f"(initial) {initial_prompt}"))
+            # Show the initial prompt in the status area instead of as Agent B's message
+            out_queue.put(('status', f"(initial) {initial_prompt}"))
             # Add the initial user prompt to both agents so they both answer the question
             try:
                 messages_b.append({'role': 'user', 'content': initial_prompt})
