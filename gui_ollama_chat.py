@@ -43,6 +43,11 @@ class Tooltip:
         tw.wm_geometry(f"+{x}+{y}")
         lbl = tk.Label(tw, text=self.text, background='#ffffe0', relief='solid', borderwidth=1)
         lbl.pack()
+        self.tipwindow = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        lbl = tk.Label(tw, text=self.text, background='#ffffe0', relief='solid', borderwidth=1)
+        lbl.pack()
 
     def hide(self, _=None):
         if self.tipwindow:
@@ -93,6 +98,12 @@ class OllamaGUI:
                         self.to_worker_queue = queue.Queue()
                     self.to_worker_queue.put(txt)
                     try:
+                        # record simple facts from injected message (Stage 1)
+                        try: self._add_facts_from_text(txt)
+                        except Exception: pass
+                    except Exception:
+                        pass
+                    try:
                         with open('send_debug.log', 'a', encoding='utf-8') as df:
                             from datetime import datetime
                             df.write(f"[{datetime.now().isoformat()}] action=injected txt={repr(txt)}\n")
@@ -121,6 +132,13 @@ class OllamaGUI:
 
             try:
                 self.queue.put(('user', txt))
+            except Exception:
+                pass
+
+            # record simple facts from the user's message (Stage 1)
+            try:
+                try: self._add_facts_from_text(txt)
+                except Exception: pass
             except Exception:
                 pass
 
@@ -174,6 +192,101 @@ class OllamaGUI:
             except Exception:
                 pass
         threading.Thread(target=worker, daemon=True).start()
+
+
+    # --- Simple persistent brain (Stage 1) ---
+    def _brain_path(self):
+        return os.path.join(os.path.dirname(__file__), 'brain.json')
+
+    def _load_brain(self):
+        p = self._brain_path()
+        try:
+            if os.path.exists(p):
+                with open(p, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        return {'facts': []}
+
+    def _save_brain(self, data=None):
+        p = self._brain_path()
+        try:
+            d = data if data is not None else getattr(self, '_brain', None) or {'facts': []}
+            with open(p, 'w', encoding='utf-8') as f:
+                json.dump(d, f, ensure_ascii=False, indent=2)
+            self._brain = d
+        except Exception:
+            pass
+
+    def _add_facts_from_text(self, text):
+        # Simple rule-based fact extraction for Stage 1
+        if not text or not getattr(self, 'memory_enabled', None) or not self.memory_enabled.get():
+            return
+        try:
+            brain = getattr(self, '_brain', None) or self._load_brain()
+            facts = brain.get('facts', [])
+            txt = text.strip()
+            # simple regexes
+            patterns = [
+                (r"\bmy name is ([A-Za-z][A-Za-z'\- ]{0,40})", 'name'),
+                (r"\bi am ([A-Za-z][A-Za-z'\- ]{0,40})\b", 'name'),
+                (r"\bi live in ([A-Za-z0-9 ,\-]+)", 'location'),
+                (r"\bi work as ([A-Za-z0-9 ,\-]+)", 'job'),
+                (r"\bi (?:like|love) ([A-Za-z0-9 ,\-]+)", 'preference'),
+            ]
+            added = False
+            import re, datetime
+            tnow = datetime.datetime.now().isoformat()
+            for pat, kind in patterns:
+                m = re.search(pat, txt, re.I)
+                if m:
+                    val = m.group(1).strip()
+                    short = f"{kind}: {val}"
+                    # dedupe
+                    if not any(f.get('text','') == short for f in facts):
+                        facts.append({'text': short, 'kind': kind, 'value': val, 'ts': tnow})
+                        added = True
+            if added:
+                brain['facts'] = facts
+                self._brain = brain
+                self._save_brain(brain)
+        except Exception:
+            pass
+
+    def _get_memory_summary(self, max_items=6):
+        try:
+            brain = getattr(self, '_brain', None) or self._load_brain()
+            facts = brain.get('facts', [])[-max_items:]
+            if not facts:
+                return ''
+            parts = [f"{f.get('text')}" for f in facts]
+            return 'Known: ' + '; '.join(parts)
+        except Exception:
+            return ''
+
+    def _show_memory(self):
+        try:
+            brain = getattr(self, '_brain', None) or self._load_brain()
+            facts = brain.get('facts', [])
+            w = tk.Toplevel(self.root)
+            w.title('Brain Memory')
+            txt = tk.Text(w, width=80, height=20)
+            txt.pack(fill='both', expand=True)
+            txt.insert('end', json.dumps(brain, indent=2, ensure_ascii=False))
+            txt.config(state='disabled')
+            btn = ttk.Button(w, text='Close', command=w.destroy)
+            btn.pack(pady=6)
+        except Exception:
+            pass
+
+    def _clear_memory(self):
+        try:
+            self._brain = {'facts': []}
+            self._save_brain(self._brain)
+            try: messagebox.showinfo('Memory', 'Memory cleared.')
+            except Exception: pass
+        except Exception:
+            pass
 
 
     def __init__(self, root):
@@ -346,6 +459,22 @@ class OllamaGUI:
         ttk.Label(controls_frame, text='From').pack(side='left', padx=(0,4))
         self.sender_name = ttk.Entry(controls_frame, width=12)
         self.sender_name.pack(side='left', padx=(0,6))
+
+        # Memory controls (Stage 1)
+        self.memory_enabled = tk.BooleanVar(value=False)
+        try:
+            mem_chk = ttk.Checkbutton(controls_frame, text='Enable Memory', variable=self.memory_enabled)
+            mem_chk.pack(side='left', padx=(6,4))
+            Tooltip(mem_chk, 'When enabled, simple facts from your messages are stored in a local brain.')
+        except Exception:
+            pass
+        try:
+            mem_view = ttk.Button(controls_frame, text='View Memory', command=self._show_memory)
+            mem_view.pack(side='left', padx=(4,2))
+            mem_clear = ttk.Button(controls_frame, text='Clear Memory', command=self._clear_memory)
+            mem_clear.pack(side='left', padx=(2,6))
+        except Exception:
+            pass
 
         self.user_input = ttk.Entry(controls_frame)
         self.user_input.pack(side='left', fill='x', expand=True, padx=(0,6))
@@ -1694,8 +1823,16 @@ class OllamaGUI:
             user_name = cfg.get('user_name')
             user_note = f" The human user's name is {user_name}." if user_name else ''
 
-            sys_a = f"{instruction} You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}.{user_note}".strip()
-            sys_b = f"{instruction} You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}.{user_note}".strip()
+            # Inject short memory summary (Stage 1) if available
+            mem_summary = ''
+            try:
+                mem_summary = self._get_memory_summary() or ''
+            except Exception:
+                mem_summary = ''
+            mem_note = f" Memory summary: {mem_summary}." if mem_summary else ''
+
+            sys_a = f"{instruction} You are {name_a}. Discuss '{topic}' with {name_b}. {persona_a}.{user_note}{mem_note}".strip()
+            sys_b = f"{instruction} You are {name_b}. Discuss '{topic}' with {name_a}. {persona_b}.{user_note}{mem_note}".strip()
 
             messages_a = [{'role': 'system', 'content': sys_a}]
             messages_b = [{'role': 'system', 'content': sys_b}]
