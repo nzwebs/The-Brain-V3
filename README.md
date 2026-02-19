@@ -1,4 +1,4 @@
-# Smoke tests: [![Smoke tests](https://github.com/REDACTED/REPO/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/REDACTED/REPO/actions/workflows/smoke-tests.yml)
+# Smoke tests: [![Smoke tests](https://github.com/nzwebs/The-Brain-V3/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/nzwebs/The-Brain-V3/actions/workflows/smoke-tests.yml)
 
 # Recent Improvements
 
@@ -146,6 +146,14 @@ python gui_ollama_chat.py
 As of February 2026, the agent A and B online/offline status indicators are updated immediately at GUI startup (not just after a delay). This ensures the connectivity dots reflect the true server state as soon as the application launches.
 
 For more, see code comments and the GUI Settings tab.
+
+## Notable UI updates (2026-02-19)
+
+- Added quick single-agent ask buttons: "Ask A" and "Ask B".
+- Single-line input expanded and `From` field moved onto the same line for compact entry.
+- Ask buttons run non-blocking background calls and show animated "Waiting" indicators per agent.
+- Memory controls consolidated into their own row; merge checkbox moved beside them.
+- Improved reply truncation to cut at word boundaries and added a short continuation attempt when replies appear truncated.
 
 ## Direct questions (how Send/Enter works)
 

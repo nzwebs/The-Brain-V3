@@ -11,7 +11,7 @@
   "b_age": "28",
   "a_quirk": "polite phrasing",
   "b_quirk": "uses slang",
-  "topic": "the benefits of remote work",
+  "topic": "",
   "turns": 10,
   "delay": 1.0,
   "max_chars_a": 120,
@@ -72,6 +72,8 @@
       "prompt": "You are an empathetic counselor. First mirror the user's feeling in one sentence, then offer one gentle suggestion."
     }
   },
+  "a_preset": "Soft-spoken Advisor",
+  "b_preset": "Soft-spoken Advisor",
   "a_runtime": {
     "temperature": 0.7,
     "max_tokens": 512,

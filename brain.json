@@ -1,0 +1,40 @@
+{
+  "facts": [
+    {
+      "text": "name: Alex",
+      "kind": "name",
+      "value": "Alex",
+      "ts": "2026-02-17T22:44:44.549303"
+    },
+    {
+      "text": "location: Seattle",
+      "kind": "location",
+      "value": "Seattle",
+      "ts": "2026-02-17T22:44:44.551211"
+    },
+    {
+      "text": "job: a teacher",
+      "kind": "job",
+      "value": "a teacher",
+      "ts": "2026-02-17T22:44:44.551499"
+    },
+    {
+      "text": "preference: pizza",
+      "kind": "preference",
+      "value": "pizza",
+      "ts": "2026-02-17T22:44:44.551747"
+    },
+    {
+      "text": "name: Wayne",
+      "kind": "name",
+      "value": "Wayne",
+      "ts": "2026-02-17T22:47:22.215727"
+    },
+    {
+      "text": "location: Hamilton",
+      "kind": "location",
+      "value": "Hamilton",
+      "ts": "2026-02-17T22:47:38.442140"
+    }
+  ]
+}

@@ -36,18 +36,17 @@ class Tooltip:
     def show(self, _=None):
         if self.tipwindow:
             return
-        x = self.widget.winfo_rootx() + 20
-        y = self.widget.winfo_rooty() + 20
-        self.tipwindow = tw = tk.Toplevel(self.widget)
-        tw.wm_overrideredirect(True)
-        tw.wm_geometry(f"+{x}+{y}")
-        lbl = tk.Label(tw, text=self.text, background='#ffffe0', relief='solid', borderwidth=1)
-        lbl.pack()
-        self.tipwindow = tw = tk.Toplevel(self.widget)
-        tw.wm_overrideredirect(True)
-        tw.wm_geometry(f"+{x}+{y}")
-        lbl = tk.Label(tw, text=self.text, background='#ffffe0', relief='solid', borderwidth=1)
-        lbl.pack()
+        try:
+            x = self.widget.winfo_rootx() + 20
+            y = self.widget.winfo_rooty() + 20
+            tw = tk.Toplevel(self.widget)
+            tw.wm_overrideredirect(True)
+            tw.wm_geometry(f"+{x}+{y}")
+            lbl = tk.Label(tw, text=self.text, background='#ffffe0', relief='solid', borderwidth=1)
+            lbl.pack()
+            self.tipwindow = tw
+        except Exception:
+            self.tipwindow = None
 
     def hide(self, _=None):
         if self.tipwindow:
@@ -63,7 +62,7 @@ class OllamaGUI:
     def _on_send(self):
         # Read user input
         try:
-            txt = self.user_input.get().strip()
+            txt = self._get_user_input_text()
         except Exception:
             txt = ''
 
@@ -117,7 +116,10 @@ class OllamaGUI:
                     except Exception:
                         pass
                 try:
-                    self.user_input.delete(0, tk.END)
+                    try: self._clear_user_input()
+                    except Exception:
+                        try: self.user_input.delete(0, tk.END)
+                        except Exception: pass
                 except Exception:
                     pass
                 return
@@ -151,9 +153,10 @@ class OllamaGUI:
                     pass
 
             try:
-                self.user_input.delete(0, tk.END)
+                self._clear_user_input()
             except Exception:
-                pass
+                try: self.user_input.delete(0, tk.END)
+                except Exception: pass
             return
 
         # Fallback: just start if no user input
@@ -192,6 +195,115 @@ class OllamaGUI:
             except Exception:
                 pass
         threading.Thread(target=worker, daemon=True).start()
+
+    def _open_final_window(self):
+        try:
+            # if already open and exists, bring to front
+            if hasattr(self, 'final_win') and self.final_win is not None:
+                try:
+                    if self.final_win.winfo_exists():
+                        try:
+                            self.final_win.lift()
+                            return
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
+            fw = tk.Toplevel(self.root)
+            fw.title('Final Merged Answer')
+            fw.geometry('700x400')
+            fw.transient(self.root)
+            from tkinter.scrolledtext import ScrolledText as _ST
+            txt = _ST(fw, wrap='word')
+            try:
+                txt.configure(font=('Segoe UI', 11))
+            except Exception:
+                try: txt.configure(font=('Arial', 11))
+                except Exception: pass
+            txt.config(state='normal')
+            # Add control bar first so it's always visible (text area will expand)
+            try:
+                ctrl = ttk.Frame(fw)
+                ctrl.pack(fill='x', side='bottom', padx=6, pady=(0,6))
+                copy_btn = ttk.Button(ctrl, text='Copy', command=lambda: self._copy_final_text())
+                copy_btn.pack(side='right', padx=(0,6))
+                # define close callback placeholder; real callback defined below
+                close_btn = ttk.Button(ctrl, text='Close')
+                close_btn.pack(side='right')
+            except Exception:
+                ctrl = None
+            # now pack the text area to take remaining space
+            txt.pack(fill='both', expand=True, padx=6, pady=6)
+            # copy current final_text contents if available
+            try:
+                if self.final_text is not None:
+                    cur = self.final_text.get('1.0', 'end').strip()
+                    if cur:
+                        txt.delete('1.0', 'end')
+                        txt.insert('end', cur)
+            except Exception:
+                pass
+            txt.config(state='disabled')
+            # store references
+            self.final_win = fw
+            self.final_win_text = txt
+            # wire up the close button that was created above (if any)
+            try:
+                if ctrl is not None:
+                    for child in ctrl.winfo_children():
+                        if isinstance(child, ttk.Button) and child.cget('text') == 'Close':
+                            child.config(command=lambda: _on_close())
+            except Exception:
+                pass
+
+            def _on_close():
+                try:
+                    self.final_win.destroy()
+                except Exception:
+                    pass
+                self.final_win = None
+                self.final_win_text = None
+            try:
+                fw.protocol('WM_DELETE_WINDOW', _on_close)
+            except Exception:
+                pass
+            try:
+                # keyboard shortcut to copy
+                fw.bind('<Control-c>', lambda e: self._copy_final_text())
+                fw.bind('<Control-C>', lambda e: self._copy_final_text())
+            except Exception:
+                pass
+            try:
+                fw.update_idletasks()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _copy_final_text(self, event=None):
+        try:
+            if hasattr(self, 'final_win_text') and self.final_win_text is not None:
+                try:
+                    txt = self.final_win_text.get('1.0', 'end').strip()
+                except Exception:
+                    txt = ''
+                try:
+                    self.root.clipboard_clear()
+                    self.root.clipboard_append(txt)
+                    try:
+                        self.queue.put(('status', 'Final answer copied to clipboard'))
+                    except Exception:
+                        try: self.status_var.set('Final answer copied to clipboard')
+                        except Exception: pass
+                except Exception:
+                    try:
+                        self.queue.put(('status', 'Copy to clipboard failed'))
+                    except Exception:
+                        try: self.status_var.set('Copy to clipboard failed')
+                        except Exception: pass
+        except Exception:
+            pass
 
 
     # --- Simple persistent brain (Stage 1) ---
@@ -395,12 +507,60 @@ class OllamaGUI:
         # Continue with rest of initialization
         self.thread = None
         self.stop_event = threading.Event()
+        self.final_text = None
         self._poll_queue()
         self._apply_theme('Dark')
         # Immediately poll connectivity after widgets are created
         self.root.after(200, self._poll_connectivity)
         self._models_info = {'a_settings': {}, 'b_settings': {}}
         # model refresh will be scheduled after UI widgets are initialized
+
+    def _reflow(self, text, width=80):
+        """Normalize and reflow text for display: collapse internal hard newlines
+        and wrap at word boundaries to avoid half-line breaks.
+        """
+        try:
+            import re, textwrap
+            if not text:
+                return ''
+            s = str(text)
+            # normalize different newline types
+            s = s.replace('\r\n', '\n').replace('\r', '\n')
+            # split into paragraphs on blank lines
+            parts = re.split(r"\n\s*\n", s)
+            out_parts = []
+            for p in parts:
+                # collapse internal newlines and excessive whitespace
+                line = re.sub(r"\s+", ' ', p).strip()
+                if not line:
+                    continue
+                wrapped = textwrap.fill(line, width=width)
+                out_parts.append(wrapped)
+            return '\n\n'.join(out_parts)
+        except Exception:
+            try:
+                return str(text)
+            except Exception:
+                return ''
+
+    def _get_user_input_text(self):
+        try:
+            # Text widget: require range
+            try:
+                return self.user_input.get('1.0', 'end').strip()
+            except Exception:
+                return self.user_input.get().strip()
+        except Exception:
+            return ''
+
+    def _clear_user_input(self):
+        try:
+            try:
+                self.user_input.delete('1.0', 'end')
+            except Exception:
+                self.user_input.delete(0, tk.END)
+        except Exception:
+            pass
 
 
     def _auto_select_first_model(self, agent):
@@ -539,7 +699,8 @@ class OllamaGUI:
         # --- Chat Output ---
         chat_frame = ttk.Frame(self.chat_tab)
         chat_frame.pack(fill='both', expand=True, padx=6, pady=6)
-        self.chat_text = ScrolledText(chat_frame, wrap='word', height=20, state='normal')
+        # Make the chat box taller by default so more text is visible
+        self.chat_text = ScrolledText(chat_frame, wrap='word', height=30, state='normal')
         self.chat_text.pack(fill='both', expand=True)
         self.chat_text.insert('end', 'Welcome to Ollama Two-Agent Chat!\n')
         self.chat_text.config(state='disabled')
@@ -547,46 +708,91 @@ class OllamaGUI:
         # --- Chat Controls ---
         controls_frame = ttk.Frame(self.chat_tab)
         controls_frame.pack(fill='x', padx=6, pady=(0,6))
-        # Sender name for user messages (optional)
-        ttk.Label(controls_frame, text='From').pack(side='left', padx=(0,4))
-        self.sender_name = ttk.Entry(controls_frame, width=12)
+        # Input row: put sender name and send input on the same horizontal line
+        input_row = ttk.Frame(controls_frame)
+        input_row.pack(fill='x', padx=(0,0))
+        # Sender name for user messages (optional) - now on same line as input
+        ttk.Label(input_row, text='From').pack(side='left', padx=(0,4))
+        self.sender_name = ttk.Entry(input_row, width=12)
         self.sender_name.pack(side='left', padx=(0,6))
 
         # Memory controls (Stage 1)
         self.memory_enabled = tk.BooleanVar(value=False)
+        # Memory controls moved to their own row beneath the main controls
         try:
-            mem_chk = ttk.Checkbutton(controls_frame, text='Enable Memory', variable=self.memory_enabled)
+            memory_frame = ttk.Frame(controls_frame)
+            memory_frame.pack(fill='x', side='bottom', padx=(0,0), pady=(4,0))
+            mem_chk = ttk.Checkbutton(memory_frame, text='Enable Memory', variable=self.memory_enabled)
             mem_chk.pack(side='left', padx=(6,4))
             Tooltip(mem_chk, 'When enabled, simple facts from your messages are stored in a local brain.')
         except Exception:
             pass
         try:
             self.ask_confirm_memory = tk.BooleanVar(value=True)
-            ask_chk = ttk.Checkbutton(controls_frame, text='Ask to confirm', variable=self.ask_confirm_memory)
+            ask_chk = ttk.Checkbutton(memory_frame, text='Ask to confirm', variable=self.ask_confirm_memory)
             ask_chk.pack(side='left', padx=(4,2))
             Tooltip(ask_chk, 'When enabled, agents will ask the user to confirm newly recorded facts.')
         except Exception:
             pass
         try:
-            mem_view = ttk.Button(controls_frame, text='View Memory', command=self._show_memory)
+            mem_view = ttk.Button(memory_frame, text='View Memory', command=self._show_memory)
             mem_view.pack(side='left', padx=(4,2))
-            mem_clear = ttk.Button(controls_frame, text='Clear Memory', command=self._clear_memory)
+            mem_clear = ttk.Button(memory_frame, text='Clear Memory', command=self._clear_memory)
             mem_clear.pack(side='left', padx=(2,6))
         except Exception:
             pass
 
-        self.user_input = ttk.Entry(controls_frame)
+        # Option to merge final answers from both models — moved into memory row when available
+        try:
+            self.merge_final_var = tk.BooleanVar(value=False)
+            try:
+                parent = memory_frame
+            except Exception:
+                parent = controls_frame
+            merge_chk = ttk.Checkbutton(parent, text='Merge final answer', variable=self.merge_final_var)
+            merge_chk.pack(side='left', padx=(6,4))
+            Tooltip(merge_chk, 'When enabled, ask both models to produce merge drafts and synthesize a single combined answer.')
+        except Exception:
+            pass
+
+        # Arrange buttons on the right so the input box can expand wider
+        self.btns_frame = ttk.Frame(input_row)
+        self.btns_frame.pack(side='right')
+
+        # Single-line user input (one-line entry) per user request
+        self.user_input = ttk.Entry(input_row, width=80)
         self.user_input.pack(side='left', fill='x', expand=True, padx=(0,6))
         try:
             self.user_input.bind('<Return>', lambda e: self._on_send())
         except Exception:
             pass
-        self.send_btn = ttk.Button(controls_frame, text='Send', command=self._on_send)
-        self.send_btn.pack(side='left')
-        self.stop_btn = ttk.Button(controls_frame, text='Stop', command=self._on_stop)
-        self.stop_btn.pack(side='left', padx=(6,0))
-        self.clear_btn = ttk.Button(controls_frame, text='Clear Chat', command=self._clear_chat)
-        self.clear_btn.pack(side='left', padx=(6,0))
+        self.send_btn = ttk.Button(self.btns_frame, text='Send', command=self._on_send)
+        self.send_btn.pack(side='left', padx=2)
+        # Quick single-agent ask buttons
+        try:
+            self.ask_a_btn = ttk.Button(self.btns_frame, text='Ask A', command=lambda: self._ask_single_agent('a'))
+            self.ask_a_btn.pack(side='left', padx=2)
+            Tooltip(self.ask_a_btn, 'Ask Agent A a single question and show its answer.')
+            self.ask_a_indicator = ttk.Label(self.btns_frame, text='', width=2)
+            self.ask_b_btn = ttk.Button(self.btns_frame, text='Ask B', command=lambda: self._ask_single_agent('b'))
+            self.ask_b_btn.pack(side='left', padx=2)
+            Tooltip(self.ask_b_btn, 'Ask Agent B a single question and show its answer.')
+            self.ask_b_indicator = ttk.Label(self.btns_frame, text='', width=2)
+        except Exception:
+            pass
+        self.stop_btn = ttk.Button(self.btns_frame, text='Stop', command=self._on_stop)
+        self.stop_btn.pack(side='left', padx=2)
+        self.clear_btn = ttk.Button(self.btns_frame, text='Clear Chat', command=self._clear_chat)
+        self.clear_btn.pack(side='left', padx=2)
+        try:
+            self.run_merge_btn = ttk.Button(self.btns_frame, text='Run Live Merge', command=self._on_run_live_merge)
+            self.run_merge_btn.pack(side='left', padx=2)
+            Tooltip(self.run_merge_btn, 'Run the three-phase merge using the configured models and show final merged answer.')
+            # "Open Final Window" button removed: live-merge now auto-opens the final window
+        except Exception:
+            pass
+
+        # Merged final answer intentionally shown in a separate popup window only
 
 
         # --- Status Bar with Turn Count ---
@@ -749,6 +955,11 @@ class OllamaGUI:
                     except Exception: pass
             except Exception:
                 pass
+        except Exception:
+            pass
+        # Load saved GUI config after widgets and presets are initialized
+        try:
+            self.load_config()
         except Exception:
             pass
 
@@ -1127,22 +1338,7 @@ class OllamaGUI:
             self._check_server_status(self.b_url.get().strip(), self.b_model_status)
             self._check_model_status(self.a_url.get().strip(), self.a_model.get().strip(), self.a_model_status)
             self._check_model_status(self.b_url.get().strip(), self.b_model.get().strip(), self.b_model_status)
-            # Also update the Chat-tab indicators (if present)
-            try:
-                if hasattr(self, 'a_status_dot'):
-                    self._check_server_status(self.a_url.get().strip(), self.a_status_dot)
-                    try:
-                        self._check_model_status(self.a_url.get().strip(), self.a_model.get().strip(), self.a_status_dot)
-                    except Exception:
-                        pass
-                if hasattr(self, 'b_status_dot'):
-                    self._check_server_status(self.b_url.get().strip(), self.b_status_dot)
-                    try:
-                        self._check_model_status(self.b_url.get().strip(), self.b_model.get().strip(), self.b_status_dot)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+            # Status indicators already updated above with a_model_status and b_model_status
         except Exception:
             pass
         # Schedule next poll
@@ -1168,6 +1364,397 @@ class OllamaGUI:
             # Thread still running — return a timeout placeholder and leave the worker to finish in background
             return {"content": f"[ERROR: timeout after {timeout}s contacting {client_url}]"}
         return result.get('res', {"content": "[ERROR: no response]"})
+
+    def _ask_single_agent(self, agent):
+        """Send a one-shot question to Agent 'a' or 'b' and display the answer."""
+        try:
+            q = ''
+            try:
+                q = (self._get_user_input_text() if hasattr(self, '_get_user_input_text') else (self.user_input.get().strip() if hasattr(self, 'user_input') else '')) or (self.topic.get().strip() if hasattr(self, 'topic') else '')
+            except Exception:
+                q = ''
+            if not q:
+                try:
+                    messagebox.showinfo('Ask Agent', 'Enter a question in the input box or set the Topic.')
+                except Exception:
+                    pass
+                return
+
+            if agent == 'a':
+                url = self.a_url.get().strip() if hasattr(self, 'a_url') else ''
+                model = self.a_model.get().strip() if hasattr(self, 'a_model') else ''
+                runtime = {
+                    'temperature': float(self.a_temp.get()) if hasattr(self, 'a_temp') else 0.7,
+                    'max_tokens': int(self.a_max_tokens.get()) if hasattr(self, 'a_max_tokens') else 512,
+                    'top_p': float(self.a_top_p.get()) if hasattr(self, 'a_top_p') else 1.0,
+                    'stop': [s.strip() for s in (self.a_stop.get().split(',') if hasattr(self, 'a_stop') else []) if s.strip()],
+                    'stream': bool(self.a_stream.get()) if hasattr(self, 'a_stream') else False,
+                }
+                name = self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A'
+                ask_btn = getattr(self, 'ask_a_btn', None)
+            else:
+                url = self.b_url.get().strip() if hasattr(self, 'b_url') else ''
+                model = self.b_model.get().strip() if hasattr(self, 'b_model') else ''
+                runtime = {
+                    'temperature': float(self.b_temp.get()) if hasattr(self, 'b_temp') else 0.7,
+                    'max_tokens': int(self.b_max_tokens.get()) if hasattr(self, 'b_max_tokens') else 512,
+                    'top_p': float(self.b_top_p.get()) if hasattr(self, 'b_top_p') else 1.0,
+                    'stop': [s.strip() for s in (self.b_stop.get().split(',') if hasattr(self, 'b_stop') else []) if s.strip()],
+                    'stream': bool(self.b_stream.get()) if hasattr(self, 'b_stream') else False,
+                }
+                name = self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B'
+                ask_btn = getattr(self, 'ask_b_btn', None)
+
+            sys_msg = f'You are {name}. Answer the user concisely and helpfully.'
+            messages = [{'role': 'system', 'content': sys_msg}, {'role': 'user', 'content': q}]
+
+            try:
+                self.queue.put(('status', f'Asking {name}...'))
+            except Exception:
+                pass
+
+            try:
+                if ask_btn is not None:
+                    try: ask_btn.config(state='disabled')
+                    except Exception: pass
+            except Exception:
+                pass
+            try:
+                # start animated indicator for this agent
+                try: self._start_ask_indicator(agent)
+                except Exception: pass
+            except Exception:
+                pass
+
+            def _worker():
+                try:
+                    res = self._call_ollama_with_timeout(url, model, messages, runtime_options=runtime, timeout=60)
+                    content = (res.get('content', '') or '').strip() if isinstance(res, dict) else str(res)
+                    if not content:
+                        content = '[No response]'
+                except Exception as e:
+                    content = f'[ERROR: {e}]'
+                try:
+                    self.queue.put((agent, content))
+                except Exception:
+                    pass
+                try:
+                    self.queue.put(('status', f'{name} answered'))
+                except Exception:
+                    pass
+                try:
+                    # stop animated indicator for this agent
+                    try: self._stop_ask_indicator(agent)
+                    except Exception: pass
+                except Exception:
+                    pass
+                try:
+                    if ask_btn is not None:
+                        try: ask_btn.config(state='normal')
+                        except Exception: pass
+                except Exception:
+                    pass
+
+            threading.Thread(target=_worker, daemon=True).start()
+            try:
+                self._clear_user_input()
+            except Exception:
+                try: self.user_input.delete(0, tk.END)
+                except Exception: pass
+        except Exception:
+            try:
+                self.queue.put(('status', 'Ask failed'))
+            except Exception:
+                pass
+
+    def _start_ask_indicator(self, agent):
+        try:
+            if agent == 'a':
+                self._ask_indicator_running_a = True
+                self._ask_indicator_index_a = 0
+                try:
+                    # pack indicator next to Ask A button if not already packed
+                    if not getattr(self.ask_a_indicator, '_is_packed', False):
+                        self.ask_a_indicator.pack(side='left', padx=2)
+                        setattr(self.ask_a_indicator, '_is_packed', True)
+                except Exception:
+                    pass
+                self._animate_ask_indicator('a')
+            else:
+                self._ask_indicator_running_b = True
+                self._ask_indicator_index_b = 0
+                try:
+                    if not getattr(self.ask_b_indicator, '_is_packed', False):
+                        self.ask_b_indicator.pack(side='left', padx=2)
+                        setattr(self.ask_b_indicator, '_is_packed', True)
+                except Exception:
+                    pass
+                self._animate_ask_indicator('b')
+        except Exception:
+            pass
+
+    def _stop_ask_indicator(self, agent):
+        try:
+            if agent == 'a':
+                self._ask_indicator_running_a = False
+                try:
+                    self.ask_a_indicator.config(text='')
+                except Exception:
+                    pass
+                try:
+                    if getattr(self.ask_a_indicator, '_is_packed', False):
+                        self.ask_a_indicator.pack_forget()
+                        setattr(self.ask_a_indicator, '_is_packed', False)
+                except Exception:
+                    pass
+            else:
+                self._ask_indicator_running_b = False
+                try:
+                    self.ask_b_indicator.config(text='')
+                except Exception:
+                    pass
+                try:
+                    if getattr(self.ask_b_indicator, '_is_packed', False):
+                        self.ask_b_indicator.pack_forget()
+                        setattr(self.ask_b_indicator, '_is_packed', False)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _animate_ask_indicator(self, agent):
+        try:
+            if agent == 'a':
+                if not getattr(self, '_ask_indicator_running_a', False):
+                    return
+                i = getattr(self, '_ask_indicator_index_a', 0)
+                dots = '.' * (i % 4)
+                try: self.ask_a_indicator.config(text='Waiting' + dots)
+                except Exception: pass
+                self._ask_indicator_index_a = i + 1
+                self.root.after(400, lambda: self._animate_ask_indicator('a'))
+            else:
+                if not getattr(self, '_ask_indicator_running_b', False):
+                    return
+                i = getattr(self, '_ask_indicator_index_b', 0)
+                dots = '.' * (i % 4)
+                try: self.ask_b_indicator.config(text='Waiting' + dots)
+                except Exception: pass
+                self._ask_indicator_index_b = i + 1
+                self.root.after(400, lambda: self._animate_ask_indicator('b'))
+        except Exception:
+            pass
+
+    def _on_run_live_merge(self):
+        try:
+            # create a cancel event and progress window
+            try:
+                self._merge_cancel_event = threading.Event()
+            except Exception:
+                self._merge_cancel_event = None
+            try:
+                if getattr(self, 'run_merge_btn', None):
+                    self.run_merge_btn.config(state='disabled')
+            except Exception:
+                pass
+
+            try:
+                win = tk.Toplevel(self.root)
+                win.title('Live Merge Progress')
+                win.geometry('420x140')
+                lbl = ttk.Label(win, text='Starting live merge...', anchor='center', wraplength=380)
+                lbl.pack(fill='both', expand=True, padx=12, pady=(12,6))
+                def _cancel_merge():
+                    cancel_event = getattr(self, '_merge_cancel_event', None)
+                    if cancel_event is not None:
+                        cancel_event.set()
+                    lbl.config(text='Cancel requested...')
+                btn = ttk.Button(win, text='Cancel', command=_cancel_merge)
+                btn.pack(pady=(0,12))
+                # keep references so worker can update/destroy
+                self.merge_progress_win = win
+                self.merge_progress_label = lbl
+            except Exception:
+                self.merge_progress_win = None
+                self.merge_progress_label = None
+
+            t = threading.Thread(target=self._run_live_merge, daemon=True)
+            t.start()
+        except Exception:
+            try:
+                if getattr(self, 'run_merge_btn', None):
+                    self.run_merge_btn.config(state='normal')
+            except Exception:
+                pass
+
+    def _run_live_merge(self):
+        try:
+            self.status_var.set('Running live merge...')
+            question = (self.topic.get().strip() if hasattr(self, 'topic') else '') or (self.user_input.get().strip() if hasattr(self, 'user_input') else '') or 'Please answer the user question.'
+            try:
+                user_name = (self.sender_name.get().strip() if hasattr(self, 'sender_name') else '') or None
+            except Exception:
+                user_name = None
+            try:
+                mem_summary = self._get_memory_summary() or ''
+            except Exception:
+                mem_summary = ''
+            a_url = self.a_url.get().strip() if hasattr(self, 'a_url') else ''
+            b_url = self.b_url.get().strip() if hasattr(self, 'b_url') else ''
+            a_model = self.a_model.get().strip() if hasattr(self, 'a_model') else ''
+            b_model = self.b_model.get().strip() if hasattr(self, 'b_model') else ''
+            timeout = 30
+
+            # Phase 1: independent answers
+            cancel_event = getattr(self, '_merge_cancel_event', None)
+            if cancel_event is not None and cancel_event.is_set():
+                try:
+                    self.status_var.set('Live merge canceled')
+                    if getattr(self, 'merge_progress_label', None) is not None:
+                        self.root.after(0, lambda: self.merge_progress_label.config(text='Canceled before phase 1') if self.merge_progress_label is not None else None)
+                except Exception:
+                    pass
+                return
+            try:
+                if getattr(self, 'merge_progress_label', None) is not None:
+                    self.root.after(0, lambda: self.merge_progress_label.config(text='Phase 1: requesting initial answers...') if self.merge_progress_label is not None else None)
+            except Exception:
+                pass
+            parts = []
+            if user_name:
+                parts.append(f"Human: {user_name}")
+            if mem_summary:
+                parts.append(f"Memory: {mem_summary}")
+            sys_note = 'You are an assistant answering a question.'
+            if parts:
+                sys_note = sys_note + ' ' + ' | '.join(parts)
+            init_instr = (
+                "Phase: initial_answer.\n"
+                "Instruction: Give your best answer. Be clear, concise, and factual.\n"
+                f"Question: {question}"
+            )
+            messages = [{'role': 'system', 'content': sys_note}, {'role': 'user', 'content': init_instr}]
+            res_a = self._call_ollama_with_timeout(a_url, a_model, messages, timeout=timeout)
+            res_b = self._call_ollama_with_timeout(b_url, b_model, messages, timeout=timeout)
+            answer_a = (res_a.get('content','') or '').strip()
+            answer_b = (res_b.get('content','') or '').strip()
+
+            # Phase 2: critiques
+            cancel_event = getattr(self, '_merge_cancel_event', None)
+            if cancel_event is not None and cancel_event.is_set():
+                try:
+                    self.status_var.set('Live merge canceled')
+                    if getattr(self, 'merge_progress_label', None) is not None:
+                        self.root.after(0, lambda: self.merge_progress_label.config(text='Canceled before critiques') if self.merge_progress_label is not None else None)
+                except Exception:
+                    pass
+                return
+            try:
+                if getattr(self, 'merge_progress_label', None) is not None:
+                    self.root.after(0, lambda: self.merge_progress_label.config(text='Phase 2: requesting critiques...') if self.merge_progress_label is not None else None)
+            except Exception:
+                pass
+            crit_a_text = (
+                "Phase: critique.\n"
+                "Instruction: Identify strengths, weaknesses, missing details, and incorrect reasoning in the other model's answer. Be objective and brief.\n"
+                f"Your answer: {answer_a}\nOther answer: {answer_b}"
+            )
+            crit_b_text = (
+                "Phase: critique.\n"
+                "Instruction: Identify strengths, weaknesses, missing details, and incorrect reasoning in the other model's answer. Be objective and brief.\n"
+                f"Your answer: {answer_b}\nOther answer: {answer_a}"
+            )
+            crit_a = self._call_ollama_with_timeout(a_url, a_model, [{'role':'system','content':'You are an objective critic.'}, {'role':'user','content':crit_a_text}], timeout=timeout).get('content','').strip()
+            crit_b = self._call_ollama_with_timeout(b_url, b_model, [{'role':'system','content':'You are an objective critic.'}, {'role':'user','content':crit_b_text}], timeout=timeout).get('content','').strip()
+
+            # Phase 3: final merge drafts
+            cancel_event = getattr(self, '_merge_cancel_event', None)
+            if cancel_event is not None and cancel_event.is_set():
+                try:
+                    self.status_var.set('Live merge canceled')
+                    if getattr(self, 'merge_progress_label', None) is not None:
+                        self.root.after(0, lambda: self.merge_progress_label.config(text='Canceled before merge drafts') if self.merge_progress_label is not None else None)
+                except Exception:
+                    pass
+                return
+            try:
+                if getattr(self, 'merge_progress_label', None) is not None:
+                    self.root.after(0, lambda: self.merge_progress_label.config(text='Phase 3: requesting merge drafts...') if self.merge_progress_label is not None else None)
+            except Exception:
+                pass
+            merge_text = (
+                "Phase: final_merge.\n"
+                f"Question: {question}\n"
+                f"Answer A: {answer_a}\n"
+                f"Answer B: {answer_b}\n"
+                f"Critique A: {crit_a}\n"
+                f"Critique B: {crit_b}\n"
+                "Instruction: Produce a single combined answer that integrates the best ideas from both models, fixes errors, and is clearer and more complete than either answer alone."
+            )
+            draft_a = self._call_ollama_with_timeout(a_url, a_model, [{'role':'system','content':'You are an expert assistant that merges and synthesizes answers.'}, {'role':'user','content':merge_text}], timeout=timeout).get('content','').strip()
+            draft_b = self._call_ollama_with_timeout(b_url, b_model, [{'role':'system','content':'You are an expert assistant that merges and synthesizes answers.'}, {'role':'user','content':merge_text}], timeout=timeout).get('content','').strip()
+
+            # Final synthesis: synthesize drafts (ask model A)
+            cancel_event = getattr(self, '_merge_cancel_event', None)
+            if cancel_event is not None and cancel_event.is_set():
+                try:
+                    self.status_var.set('Live merge canceled')
+                    if getattr(self, 'merge_progress_label', None):
+                        self.root.after(0, lambda: self.merge_progress_label.config(text='Canceled before final synthesis') if self.merge_progress_label is not None else None)
+                except Exception:
+                    pass
+                return
+            try:
+                if getattr(self, 'merge_progress_label', None) is not None:
+                    self.root.after(0, lambda: self.merge_progress_label.config(text='Final synthesis in progress...') if self.merge_progress_label is not None else None)
+            except Exception:
+                pass
+            synth_text = (
+                "Phase: synthesize.\n"
+                "Instruction: Synthesize the two drafts into one concise final answer and briefly mention any conflicts you resolved.\n"
+                f"Draft A: {draft_a}\nDraft B: {draft_b}"
+            )
+            final = self._call_ollama_with_timeout(a_url, a_model, [{'role':'system','content':'You are an expert synthesizer.'}, {'role':'user','content':synth_text}], timeout=timeout).get('content','').strip()
+
+            if not final:
+                final = draft_a or draft_b or '[ERROR: no merged output]'
+
+            # enqueue the final merged answer for display
+            try:
+                self.queue.put(('merged_final', final))
+            except Exception:
+                pass
+            self.status_var.set('Live merge finished')
+            try:
+                if getattr(self, 'merge_progress_label', None) is not None:
+                    self.root.after(0, lambda: (self.merge_progress_label and self.merge_progress_label.config(text='Completed — final merged answer ready')))
+            except Exception:
+                pass
+        except Exception as e:
+            try:
+                self.queue.put(('merged_final', f'[ERROR running live merge: {e}]'))
+            except Exception:
+                pass
+            self.status_var.set('Live merge failed')
+        finally:
+            try:
+                if getattr(self, 'run_merge_btn', None):
+                    self.run_merge_btn.config(state='normal')
+            except Exception:
+                pass
+            try:
+                # close the progress window if it exists
+                if getattr(self, 'merge_progress_win', None):
+                    def _close_merge_window():
+                        try:
+                            win = getattr(self, 'merge_progress_win', None)
+                            if win is not None:
+                                win.destroy()
+                        except Exception:
+                            pass
+                    self.root.after(1000, _close_merge_window)
+            except Exception:
+                pass
 
     def load_personas(self, path=DEFAULT_PERSONAS_PATH):
         if not os.path.exists(path):
@@ -1210,6 +1797,8 @@ class OllamaGUI:
             'close_on_exit': bool(self.close_on_exit_var.get()),
             # Pull model management config removed
             'persona_presets': {k: {'age': v[0], 'quirk': v[1], 'prompt': v[2]} for k, v in self.persona_presets.items()},
+            'a_preset': self.a_preset.get().strip() if hasattr(self, 'a_preset') else '',
+            'b_preset': self.b_preset.get().strip() if hasattr(self, 'b_preset') else '',
             'a_runtime': {
                 'temperature': float(self.a_temp.get()),
                 'max_tokens': int(self.a_max_tokens.get()),
@@ -1231,7 +1820,9 @@ class OllamaGUI:
         except Exception:
             pass
 
+
     def load_config(self, path=DEFAULT_CONFIG):
+        """Load GUI config and restore key fields (presets, age, quirk)."""
         if not os.path.exists(path):
             return
         try:
@@ -1239,137 +1830,34 @@ class OllamaGUI:
                 cfg = json.load(f)
         except Exception:
             return
-            def s(entry, val):
-                try:
-                    if isinstance(entry, ttk.Entry):
-                        entry.delete(0, tk.END); entry.insert(0, val)
-                    else:
-                        entry.set(val)
-                except Exception:
-                    pass
 
-            s(self.a_url, cfg.get('a_url', self.a_url.get()))
-            s(self.b_url, cfg.get('b_url', self.b_url.get()))
-            s(self.a_model, cfg.get('a_model', self.a_model.get()))
-            s(self.b_model, cfg.get('b_model', self.b_model.get()))
-            s(self.a_persona, cfg.get('a_persona', self.a_persona.get()))
+        def s_set(widget, val):
             try:
-                s(self.a_name, cfg.get('a_name', self.a_name.get()))
-            except Exception:
-                pass
-            s(self.b_persona, cfg.get('b_persona', self.b_persona.get()))
-            s(self.a_age, cfg.get('a_age', self.a_age.get()))
-            s(self.b_age, cfg.get('b_age', self.b_age.get()))
-            s(self.a_quirk, cfg.get('a_quirk', self.a_quirk.get()))
-            s(self.b_quirk, cfg.get('b_quirk', self.b_quirk.get()))
-            try:
-                self.topic.delete(0, tk.END); self.topic.insert(0, cfg.get('topic', self.topic.get()))
-            except Exception:
-                pass
-            try:
-                self.turns.set(int(cfg.get('turns', self.turns.get())))
-            except Exception:
-                pass
-            try:
-                self.delay.set(float(cfg.get('delay', self.delay.get())))
-            except Exception:
-                pass
-            try:
-                self.max_chars_a.set(int(cfg.get('max_chars_a', self.max_chars_a.get())))
-            except Exception:
-                pass
-            try:
-                self.max_chars_b.set(int(cfg.get('max_chars_b', self.max_chars_b.get())))
-            except Exception:
-                pass
-            try:
-                self.short_turn_var.set(bool(cfg.get('short_turn', self.short_turn_var.get())))
-            except Exception:
-                pass
-            try:
-                self.log_var.set(bool(cfg.get('log', self.log_var.get())))
-                self.log_path.delete(0, tk.END); self.log_path.insert(0, cfg.get('log_path', self.log_path.get()))
-            except Exception:
-                pass
-            try:
-                self.close_on_exit_var.set(bool(cfg.get('close_on_exit', self.close_on_exit_var.get())))
-            except Exception:
-                pass
-            # load persona presets if present
-            pp = cfg.get('persona_presets')
-            if isinstance(pp, dict):
-                try:
-                    self.persona_presets = {k: (str(v.get('age','')), v.get('quirk',''), v.get('prompt','')) for k, v in pp.items()}
-                    preset_names = list(self.persona_presets.keys())
-                    self.a_preset['values'] = preset_names; self.b_preset['values'] = preset_names
-                except Exception:
-                    pass
-            # Load persona file selections if present
-            try:
-                a_pf = cfg.get('a_persona_file','')
-                b_pf = cfg.get('b_persona_file','')
-                if hasattr(self, 'a_persona_file_settings') and a_pf:
+                if val is None:
+                    return
+                if hasattr(widget, 'delete') and hasattr(widget, 'insert'):
+                    widget.delete(0, tk.END); widget.insert(0, str(val))
+                else:
                     try:
-                        self.a_persona_file_settings.set(a_pf)
-                        p = os.path.join(os.path.dirname(__file__), a_pf)
-                        if os.path.exists(p):
-                            with open(p, 'r', encoding='utf-8') as pf:
-                                txt = pf.read().strip()
-                            try: self.a_persona.delete(0, tk.END); self.a_persona.insert(0, txt)
-                            except Exception: pass
-                    except Exception:
-                        pass
-                if hasattr(self, 'b_persona_file_settings') and b_pf:
-                    try:
-                        self.b_persona_file_settings.set(b_pf)
-                        p = os.path.join(os.path.dirname(__file__), b_pf)
-                        if os.path.exists(p):
-                            with open(p, 'r', encoding='utf-8') as pf:
-                                txt = pf.read().strip()
-                            try: self.b_persona.delete(0, tk.END); self.b_persona.insert(0, txt)
-                            except Exception: pass
+                        widget.set(str(val))
                     except Exception:
                         pass
             except Exception:
                 pass
-            # Pull model management config load removed
-            try:
-                ar = cfg.get('a_runtime', {}) or {}
-                try: self.a_temp.set(float(ar.get('temperature', self.a_temp.get())))
-                except Exception: pass
-                try: self.a_max_tokens.set(int(ar.get('max_tokens', self.a_max_tokens.get())))
-                except Exception: pass
-                try: self.a_top_p.set(float(ar.get('top_p', self.a_top_p.get())))
-                except Exception: pass
-                try: self.a_stop.delete(0, tk.END); self.a_stop.insert(0, ','.join(ar.get('stop', []) if isinstance(ar.get('stop', []), list) else []))
-                except Exception: pass
-                try: self.a_stream.set(bool(ar.get('stream', self.a_stream.get())))
-                except Exception: pass
-            except Exception:
-                pass
-            try:
-                br = cfg.get('b_runtime', {}) or {}
-                try: self.b_temp.set(float(br.get('temperature', self.b_temp.get())))
-                except Exception: pass
-                try: self.b_max_tokens.set(int(br.get('max_tokens', self.b_max_tokens.get())))
-                except Exception: pass
-                try: self.b_top_p.set(float(br.get('top_p', self.b_top_p.get())))
-                except Exception: pass
-                try: self.b_stop.delete(0, tk.END); self.b_stop.insert(0, ','.join(br.get('stop', []) if isinstance(br.get('stop', []), list) else []))
-                except Exception: pass
-                try: self.b_stream.set(bool(br.get('stream', self.b_stream.get())))
-                except Exception: pass
-            except Exception:
-                pass
+
+        # restore simple entries and comboboxes if present
         try:
-            s(self.b_name, cfg.get('b_name', self.b_name.get()))
+            if hasattr(self, 'a_age'): s_set(self.a_age, cfg.get('a_age', self.a_age.get()))
+            if hasattr(self, 'b_age'): s_set(self.b_age, cfg.get('b_age', self.b_age.get()))
+            if hasattr(self, 'a_quirk'): s_set(self.a_quirk, cfg.get('a_quirk', self.a_quirk.get()))
+            if hasattr(self, 'b_quirk'): s_set(self.b_quirk, cfg.get('b_quirk', self.b_quirk.get()))
+            # restore preset selectors (both chat-tab and settings-tab controls if present)
+            if hasattr(self, 'a_preset'): s_set(self.a_preset, cfg.get('a_preset', getattr(self, 'a_preset').get()))
+            if hasattr(self, 'b_preset'): s_set(self.b_preset, cfg.get('b_preset', getattr(self, 'b_preset').get()))
+            if hasattr(self, 'a_preset_settings'): s_set(self.a_preset_settings, cfg.get('a_preset', getattr(self, 'a_preset_settings').get()))
+            if hasattr(self, 'b_preset_settings'): s_set(self.b_preset_settings, cfg.get('b_preset', getattr(self, 'b_preset_settings').get()))
         except Exception:
             pass
-        except Exception:
-            pass
-        finally:
-            pass
-
     def _poll_queue(self):
         def format_markdown(md):
             import re
@@ -1404,13 +1892,15 @@ class OllamaGUI:
                 if kind == 'a':
                     name = self.a_name.get().strip() if hasattr(self, 'a_name') else 'Agent_A'
                     self.chat_text.config(state='normal')
-                    self.chat_text.insert('end', f"{name}: " + formatted + '\n\n')
+                    disp = self._reflow(formatted, width=100)
+                    self.chat_text.insert('end', f"{name}: " + disp + '\n\n')
                     self.chat_text.see('end')
                     self.chat_text.config(state='disabled')
                 elif kind == 'b':
                     name = self.b_name.get().strip() if hasattr(self, 'b_name') else 'Agent_B'
                     self.chat_text.config(state='normal')
-                    self.chat_text.insert('end', f"{name}: " + formatted + '\n\n')
+                    disp = self._reflow(formatted, width=100)
+                    self.chat_text.insert('end', f"{name}: " + disp + '\n\n')
                     self.chat_text.see('end')
                     self.chat_text.config(state='disabled')
                 elif kind == 'status':
@@ -1431,11 +1921,45 @@ class OllamaGUI:
                         self.turn_count_var.set('')
                     except Exception:
                         pass
+                # Simplified: ignore intermediate merge-phase messages and only show final merged result
+                elif kind in ('initial_a', 'initial_b', 'critique_a', 'critique_b', 'draft_a', 'draft_b'):
+                    # intentionally ignored for the simplified UI
+                    pass
+                elif kind == 'merged_final':
+                    try:
+                        disp = self._reflow(formatted, width=100)
+                        # If final popup exists, update it; otherwise open the popup and populate it
+                        try:
+                            if hasattr(self, 'final_win_text') and getattr(self, 'final_win_text', None) is not None:
+                                self.final_win_text.config(state='normal')
+                                self.final_win_text.delete('1.0', 'end')
+                                self.final_win_text.insert('end', disp)
+                                self.final_win_text.see('end')
+                                self.final_win_text.config(state='disabled')
+                            else:
+                                try:
+                                    self._open_final_window()
+                                except Exception:
+                                    pass
+                                if hasattr(self, 'final_win_text') and getattr(self, 'final_win_text', None) is not None:
+                                    try:
+                                        self.final_win_text.config(state='normal')
+                                        self.final_win_text.delete('1.0', 'end')
+                                        self.final_win_text.insert('end', disp)
+                                        self.final_win_text.see('end')
+                                        self.final_win_text.config(state='disabled')
+                                    except Exception:
+                                        pass
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
                 elif kind == 'user':
                     try:
                         name = (self.sender_name.get().strip() if hasattr(self, 'sender_name') else '') or 'You'
                         self.chat_text.config(state='normal')
-                        self.chat_text.insert('end', f"{name}: {formatted}\n\n")
+                        disp = self._reflow(formatted, width=100)
+                        self.chat_text.insert('end', f"{name}: {disp}\n\n")
                         self.chat_text.see('end')
                         self.chat_text.config(state='disabled')
                     except Exception:
@@ -1480,6 +2004,7 @@ class OllamaGUI:
             'short_turn': bool(self.short_turn_var.get()),
             'log': bool(self.log_var.get()),
             'log_path': self.log_path.get().strip() or None,
+            'merge_final': bool(self.merge_final_var.get()) if getattr(self, 'merge_final_var', None) is not None else False,
             'a_runtime': {
                 'temperature': float(self.a_temp.get()),
                 'max_tokens': int(self.a_max_tokens.get()),
@@ -1555,9 +2080,10 @@ class OllamaGUI:
                     if status_label is not None:
                         try:
                             try:
-                                self.root.after(0, lambda: status_label.config(text='●', foreground='gray'))
+                                self.root.after(0, lambda: status_label.config(text='●', foreground='gray') if status_label is not None else None)
                             except Exception:
-                                status_label.config(text='●', foreground='gray')
+                                if status_label is not None:
+                                    status_label.config(text='●', foreground='gray')
                         except Exception: pass
                     if agent in ('a_settings', 'b_settings'):
                         try:
@@ -1612,9 +2138,10 @@ class OllamaGUI:
                         if status_label is not None:
                             color_map = {'green': 'green', 'red': 'red', 'gray': 'gray'}
                             try:
-                                self.root.after(0, lambda: status_label.config(text='●', foreground=color_map.get(col, 'gray')))
+                                self.root.after(0, lambda: status_label.config(text='●', foreground=color_map.get(col, 'gray')) if status_label is not None else None)
                             except Exception:
-                                status_label.config(text='●', foreground=color_map.get(col, 'gray'))
+                                if status_label is not None:
+                                    status_label.config(text='●', foreground=color_map.get(col, 'gray'))
                     except Exception:
                         pass
 
@@ -1897,6 +2424,8 @@ class OllamaGUI:
 
     def _run_conversation(self, cfg, stop_event, out_queue, in_queue=None):
         log_file = None
+        content_a = ''
+        content_b = ''
         try:
             topic = cfg['topic']
             try:
@@ -1974,17 +2503,30 @@ class OllamaGUI:
                 if cfg.get('short_turn'):
                     import re
                     m = re.search(r"(.+?[.!?])(\s|$)", t, re.S)
-                    if m: s = m.group(1).strip()
+                    if m:
+                        s = m.group(1).strip()
                     else:
-                        parts = re.split(r'[,;:\\-]\s*', t, maxsplit=1); s = parts[0].strip()
+                        parts = re.split(r'[,;:\-]\s*', t, maxsplit=1)
+                        s = parts[0].strip()
                     limit = maxc if maxc and maxc > 0 else 120
-                    if len(s) > limit: s = s[:limit].rstrip();
-                    if not s.endswith(('.', '!', '?')): s = s.rstrip(' ,;:') + '…'
-                    return s
+                    if len(s) <= limit:
+                        return s
+                    # cut at last whitespace before limit to avoid mid-word truncation
+                    cut = s[:limit]
+                    last_space = cut.rfind(' ')
+                    if last_space > 0:
+                        cut = cut[:last_space]
+                    cut = cut.rstrip(' ,;:') + '…'
+                    return cut
                 if maxc and maxc > 0:
-                    s = t[:maxc].strip()
-                    if len(t) > maxc and not s.endswith(('.', '!', '?')): s = s.rstrip(' ,;:') + '…'
-                    return s
+                    if len(t) <= maxc:
+                        return t
+                    cut = t[:maxc]
+                    last_space = cut.rfind(' ')
+                    if last_space > 0:
+                        cut = cut[:last_space]
+                    cut = cut.rstrip(' ,;:') + '…'
+                    return cut
                 return t
 
 
@@ -2027,15 +2569,35 @@ class OllamaGUI:
                                 if isinstance(um, str) and um.strip():
                                     # Broadcast injected user message to both agents so both will answer
                                     try:
-                                        # Send raw message text to agents (no sender prefix)
-                                        messages_b.append({'role': 'user', 'content': um.strip()})
+                                        content = um.strip()
+                                        # Prepend sender name if available so agents see who sent it
+                                        try:
+                                            sender = cfg.get('user_name')
+                                            if sender:
+                                                content = f"{sender}: {content}"
+                                        except Exception:
+                                            pass
+                                    except Exception:
+                                        content = um.strip()
+                                    try:
+                                        # Include a short memory summary as a system note so agents can use real facts
+                                        try:
+                                            cur_mem = self._get_memory_summary() or ''
+                                        except Exception:
+                                            cur_mem = ''
+                                        if cur_mem:
+                                            messages_b.append({'role': 'system', 'content': f"Memory summary: {cur_mem}"})
                                     except Exception:
                                         pass
                                     try:
-                                        messages_a.append({'role': 'user', 'content': um.strip()})
+                                        messages_b.append({'role': 'user', 'content': content})
                                     except Exception:
                                         pass
-                                    try: out_queue.put(('user', um.strip()))
+                                    try:
+                                        messages_a.append({'role': 'user', 'content': content})
+                                    except Exception:
+                                        pass
+                                    try: out_queue.put(('user', content))
                                     except Exception: pass
                             # continue draining any additional messages
                 except queue.Empty:
@@ -2070,8 +2632,41 @@ class OllamaGUI:
                     messages_b_call = messages_b
 
                 resp_b = self._call_ollama_with_timeout(b_url, b_model, messages_b_call, runtime_options=b_runtime, timeout=20)
-                content_b = trunc(resp_b.get('content', ''), 'b')
+                raw_b = (resp_b.get('content','') or '').strip() if isinstance(resp_b, dict) else str(resp_b)
+                # If the model reply looks cut off (no terminal punctuation) try one short continuation
+                try:
+                    def looks_cut_off(s: str) -> bool:
+                        if not s: return False
+                        s = s.strip()
+                        if s.endswith(('.', '!', '?')): return False
+                        if s.endswith('…') or s.endswith('...') or s.endswith('..'):
+                            return True
+                        # if last char is a letter or digit, likely mid-sentence
+                        if s and s[-1].isalnum():
+                            # only attempt if the reply is reasonably long (likely truncated by tokens)
+                            if len(s) > (cfg.get('max_chars_b') or 120) - 20:
+                                return True
+                        return False
+                    if looks_cut_off(raw_b):
+                        try:
+                            cont_msg = list(messages_b_call) + [{'role':'system','content':'The previous response appears to have been cut off. Please continue and finish the previous answer concisely.'}]
+                            cont_resp = self._call_ollama_with_timeout(b_url, b_model, cont_msg, runtime_options=b_runtime, timeout=12)
+                            cont_text = (cont_resp.get('content','') or '').strip() if isinstance(cont_resp, dict) else str(cont_resp)
+                            if cont_text:
+                                raw_b = (raw_b + ' ' + cont_text).strip()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                content_b = trunc(raw_b, 'b')
                 out_queue.put(('b', content_b))
+                # Record first-turn initial answers into Merge Panel
+                try:
+                    if i == 0:
+                        try: out_queue.put(('initial_b', content_b))
+                        except Exception: pass
+                except Exception:
+                    pass
                 # brain logging removed
                 if log_file:
                     try:
@@ -2110,8 +2705,37 @@ class OllamaGUI:
                     messages_a_call = messages_a
 
                 resp_a = self._call_ollama_with_timeout(a_url, a_model, messages_a_call, runtime_options=a_runtime, timeout=20)
-                content_a = trunc(resp_a.get('content', ''), 'a')
+                raw_a = (resp_a.get('content','') or '').strip() if isinstance(resp_a, dict) else str(resp_a)
+                try:
+                    def looks_cut_off_a(s: str) -> bool:
+                        if not s: return False
+                        s = s.strip()
+                        if s.endswith(('.', '!', '?')): return False
+                        if s.endswith('…') or s.endswith('...') or s.endswith('..'):
+                            return True
+                        if s and s[-1].isalnum():
+                            if len(s) > (cfg.get('max_chars_a') or 120) - 20:
+                                return True
+                        return False
+                    if looks_cut_off_a(raw_a):
+                        try:
+                            cont_msg_a = list(messages_a_call) + [{'role':'system','content':'The previous response appears to have been cut off. Please continue and finish the previous answer concisely.'}]
+                            cont_resp_a = self._call_ollama_with_timeout(a_url, a_model, cont_msg_a, runtime_options=a_runtime, timeout=12)
+                            cont_text_a = (cont_resp_a.get('content','') or '').strip() if isinstance(cont_resp_a, dict) else str(cont_resp_a)
+                            if cont_text_a:
+                                raw_a = (raw_a + ' ' + cont_text_a).strip()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                content_a = trunc(raw_a, 'a')
                 out_queue.put(('a', content_a))
+                try:
+                    if i == 0:
+                        try: out_queue.put(('initial_a', content_a))
+                        except Exception: pass
+                except Exception:
+                    pass
                 # brain logging removed
                 if log_file:
                     try:
@@ -2140,8 +2764,123 @@ class OllamaGUI:
         finally:
             try:
                 if log_file: log_file.close()
-            except Exception: pass
-            try: out_queue.put(('done', ''))
+            except Exception:
+                pass
+
+            # If requested, ask both models to produce a merged final answer
+            try:
+                if getattr(self, 'merge_final_var', None) and self.merge_final_var.get():
+                    try:
+                        final_a = content_a if 'content_a' in locals() else ''
+                        final_b = content_b if 'content_b' in locals() else ''
+                        if final_a or final_b:
+                            merge_prompt = (
+                                "Please merge the following two answers into one concise, accurate, and improved final answer.\n"
+                                f"Answer A:\n{final_a}\n\nAnswer B:\n{final_b}\n\n"
+                                "Provide a single merged answer and briefly note any conflicts you resolved."
+                            )
+                            # Cross-Examination: ask each model to critique the other
+                            try:
+                                critique_text_a = (
+                                    "Phase: critique.\n"
+                                    f"Your answer: {final_a}\n"
+                                    f"Other answer: {final_b}\n"
+                                    "Instruction: Identify strengths, weaknesses, missing details, and any incorrect reasoning in the other model's answer. Be objective and brief."
+                                )
+                                critique_msg_a = [
+                                    {'role': 'system', 'content': 'You are an objective critic.'},
+                                    {'role': 'user', 'content': critique_text_a}
+                                ]
+                                res_crit_a = self._call_ollama_with_timeout(cfg.get('a_url', ''), cfg.get('a_model', ''), critique_msg_a, runtime_options=cfg.get('a_runtime', {}), timeout=15)
+                            except Exception:
+                                res_crit_a = {'content': ''}
+                            try:
+                                critique_text_b = (
+                                    "Phase: critique.\n"
+                                    f"Your answer: {final_b}\n"
+                                    f"Other answer: {final_a}\n"
+                                    "Instruction: Identify strengths, weaknesses, missing details, and any incorrect reasoning in the other model's answer. Be objective and brief."
+                                )
+                                critique_msg_b = [
+                                    {'role': 'system', 'content': 'You are an objective critic.'},
+                                    {'role': 'user', 'content': critique_text_b}
+                                ]
+                                res_crit_b = self._call_ollama_with_timeout(cfg.get('b_url', ''), cfg.get('b_model', ''), critique_msg_b, runtime_options=cfg.get('b_runtime', {}), timeout=15)
+                            except Exception:
+                                res_crit_b = {'content': ''}
+                            critique_a = (res_crit_a.get('content','') or '').strip()
+                            critique_b = (res_crit_b.get('content','') or '').strip()
+                            try:
+                                out_queue.put(('critique_a', critique_a))
+                            except Exception:
+                                pass
+                            try:
+                                out_queue.put(('critique_b', critique_b))
+                            except Exception:
+                                pass
+
+                            # Ask both models for a merge draft
+                            msg = [
+                                {'role': 'system', 'content': 'You are an expert assistant that merges and synthesizes answers.'},
+                                {'role': 'user', 'content': ''}
+                            ]
+                            try:
+                                merge_text = (
+                                    "Phase: final_merge.\n"
+                                    f"Question: {cfg.get('topic','')}\n"
+                                    f"Answer A: {final_a}\n"
+                                    f"Answer B: {final_b}\n"
+                                    f"Critique A: {critique_a}\n"
+                                    f"Critique B: {critique_b}\n"
+                                    "Instruction: Produce a single combined answer that integrates the best ideas from both models, fixes errors, and is clearer and more complete than either answer alone."
+                                )
+                                msg = [
+                                    {'role': 'system', 'content': 'You are an expert assistant that merges and synthesizes answers.'},
+                                    {'role': 'user', 'content': merge_text}
+                                ]
+                                res_a = self._call_ollama_with_timeout(cfg.get('a_url', ''), cfg.get('a_model', ''), msg, runtime_options=cfg.get('a_runtime', {}), timeout=20)
+                            except Exception:
+                                res_a = {'content': ''}
+                            try:
+                                res_b = self._call_ollama_with_timeout(cfg.get('b_url', ''), cfg.get('b_model', ''), msg, runtime_options=cfg.get('b_runtime', {}), timeout=20)
+                            except Exception:
+                                res_b = {'content': ''}
+                            draft_a = (res_a.get('content', '') or '').strip()
+                            draft_b = (res_b.get('content', '') or '').strip()
+                            # Synthesize final answer by asking model A to combine both drafts
+                            try:
+                                synth_prompt = (
+                                    "You are an expert synthesizer. Given two merge drafts, produce a single final answer that is concise, coherent, and combines the best of both.\n\n"
+                                    f"Draft A:\n{draft_a}\n\nDraft B:\n{draft_b}\n\nFinal Answer:\n"
+                                )
+                                synth_msg = [{'role': 'system', 'content': 'You are an expert assistant that synthesizes and refines content.'}, {'role': 'user', 'content': synth_prompt}]
+                                synth_res = self._call_ollama_with_timeout(cfg.get('a_url', ''), cfg.get('a_model', ''), synth_msg, runtime_options=cfg.get('a_runtime', {}), timeout=20)
+                                final_merged = (synth_res.get('content', '') or '').strip()
+                            except Exception:
+                                final_merged = draft_a or draft_b
+                            if final_merged:
+                                try:
+                                    out_queue.put(('status', 'Merged final answer produced.'))
+                                except Exception:
+                                    pass
+                                try:
+                                    out_queue.put(('draft_a', draft_a))
+                                except Exception:
+                                    pass
+                                try:
+                                    out_queue.put(('draft_b', draft_b))
+                                except Exception:
+                                    pass
+                                try:
+                                    out_queue.put(('merged_final', final_merged))
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            try:
+                out_queue.put(('done', ''))
             except Exception:
                 pass
 

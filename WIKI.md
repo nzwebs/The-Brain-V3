@@ -13,6 +13,12 @@ This repository's wiki content can be started here. You can copy this file into 
   - If no conversation is running, the text becomes the initial prompt.
   - If a conversation is running, the text is injected to both agents as a user message.
 
+  ### Notes (2026-02-19)
+
+  - Quick single-agent asks: use the `Ask A` / `Ask B` buttons to query one agent without starting the multi-turn conversation.
+  - The `From` sender field shares the same row as the input for compact entry.
+  - Ask buttons run non-blocking background calls and show a small animated "Waiting" indicator next to the relevant button.
+
 ## Running smoke tests
 
 Use `smoke_test.py` to run a headless validation locally. The GitHub Actions CI runs the same script.

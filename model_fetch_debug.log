@@ -1,0 +1,90 @@
+[2026-02-18T21:43:21.672730] Fetch models debug for http://192.168.127.121:11434
+GET http://192.168.127.121:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+
+[2026-02-18T21:43:21.672825] Fetch models debug for http://192.168.127.121:11434
+GET http://192.168.127.121:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+
+[2026-02-18T21:43:25.203295] Fetch models debug for http://localhost:11434
+GET http://localhost:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://localhost:11434/v1/models
+ERROR /v1/models: TimeoutError('timed out')
+GET http://localhost:11434/api/models
+ERROR /api/models: TimeoutError('timed out')
+Last exception: TimeoutError('timed out')
+
+[2026-02-18T21:43:25.218487] Fetch models debug for http://localhost:11434
+GET http://localhost:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://localhost:11434/v1/models
+ERROR /v1/models: TimeoutError('timed out')
+GET http://localhost:11434/api/models
+ERROR /api/models: TimeoutError('timed out')
+Last exception: TimeoutError('timed out')
+
+[2026-02-18T21:43:52.192125] Fetch models debug for http://192.168.127.121:11434
+GET http://192.168.127.121:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+
+[2026-02-18T21:44:10.780900] Fetch models debug for http://192.168.127.121:11434
+GET http://192.168.127.121:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+
+[2026-02-18T21:45:59.765391] Fetch models debug for http://192.168.127.121:11434
+GET http://192.168.127.121:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+
+[2026-02-18T21:46:09.700711] Fetch models debug for http://192.168.127.121:11434
+GET http://192.168.127.121:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://192.168.127.121:11434/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+
+[2026-02-19T18:40:46.310332] Fetch models debug for http://localhost:11434
+GET http://localhost:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://localhost:11434/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://localhost:11434/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+
+[2026-02-19T18:40:46.325498] Fetch models debug for http://localhost:11434
+GET http://localhost:11434/models
+ERROR /models: URLError(TimeoutError('timed out'))
+GET http://localhost:11434/v1/models
+ERROR /v1/models: URLError(TimeoutError('timed out'))
+GET http://localhost:11434/api/models
+ERROR /api/models: URLError(TimeoutError('timed out'))
+Last exception: URLError(TimeoutError('timed out'))
+

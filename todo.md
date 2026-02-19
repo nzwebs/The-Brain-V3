@@ -72,6 +72,12 @@ This file tracks the current status and next steps for the GUI + CLI two-agent O
 2. Manual GUI verification: test pulls, model refresh, persona-file loads, and wipe-brain.
 3. Add unit/integration tests for the worker queue and model-fetch logic.
 
+Updates (2026-02-19):
+- Documentation updated: `CHANGELOG.md`, `README.md`, `WIKI.md`, `WORKING_NOTE.md` reflect recent UI/behavior changes (Ask A/B, non-blocking calls, indicators, truncation improvements).
+- Removed redundant "Open Final Window" button; final window auto-opens after live merge.
+
+Next: commit and push the changes to the remote repository.
+
 ## How to Run Quick Smoke Test
 1. Run the headless smoke test (simulates conversation without network):
 ```sh
