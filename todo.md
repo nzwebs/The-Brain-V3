@@ -7,20 +7,7 @@ This file tracks the implementation status and next steps for the GUI + CLI two-
 
 ---
 
-## Completed
-- Settings UI: main + "Ollama Settings" tab
-- Per-agent runtime controls: temperature, max tokens, top_p, stop, streaming
-- Runtime options wired: `chat_with_ollama()` accepts runtime dicts from GUI
-- Model management UI: pull, refresh, remove for A/B/Both
-- Model list auto-refresh: all lists update on startup and URL changes
-- Fixed: duplicate input fields in Agent Settings
-- Add prompt engineering improvements
-
 ## In Progress
-- Settings tab model management menu rebuilt (done)
-- Model lists reliably update and display (done)
-- Robust error/status feedback for model actions (done)
-- Pull action shows progress/status in persistent log (done)
 - Implement push-to-cloud: needs standardization
 - Persistence & security: settings persist to `gui_config.json`; secure cloud auth not yet implemented
 
@@ -49,18 +36,8 @@ This file tracks the implementation status and next steps for the GUI + CLI two-
 
 This file tracks the current status and next steps for the GUI + CLI two-agent Ollama project.
 
-## Completed (recent)
-- Centralized Settings tab with model management and persona presets.
-- Added persona-file selectors in Settings (loads file contents into Chat persona fields).
-- Brain viewer and Wipe Brain action implemented.
-- Live turn count and status updates in the Chat UI.
-- Restored agent name fields (Ava / Orion) and persisted them.
-- Thread-safety hardening: worker threads no longer update Tk widgets directly (uses queue/root.after).
-- Timeout wrapper for Ollama calls to improve Stop responsiveness.
-
 ## Current / In Progress
 - Full GUI manual testing and polish (smoke tests passing).
-- Persisting persona-file selections (saved to `gui_config.json`) and loading on startup (done).
 
 ## Planned / Backlog
 - Show installed models with metadata/size (requires server support).
